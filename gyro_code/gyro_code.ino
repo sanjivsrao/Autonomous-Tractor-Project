@@ -1,40 +1,28 @@
-#include <SoftwareSerial.h>
+#include <Wire.h>
 #include <MPU6050_light.h>
-#include "Wire.h"
-#define sdaPin 4
-#define sclPin 5
 
-unsigned long timer = 0;
-// Set up a new SoftwareSerial object
-SoftwareSerial mySerial =  SoftwareSerial(sdaPin, sclPin);
 MPU6050 mpu(Wire);
-
-void setup()  {
-    // Define pin modes for TX and RX
-    pinMode(rxPin, INPUT);
-    pinMode(txPin, OUTPUT);
-    mpu.begin();
-    delay(1000);
-    mpu.calcOffsets();
-    // Set the baud rate for the SoftwareSerial object
-    mySerial.begin(9600);
-     Serial.print("hie");
+unsigned long timer = 0;
+ 
+void setup() {
+  Serial.begin(9600);                                     
+  Wire.begin();
+  mpu.begin();     
+  mpu.calcGyroOffsets();      
 }
-
+ 
 void loop() {
   mpu.update();
-
-  if((millis()-timer)>10){ // print data every 10ms
-    Serial.print("X : ");
-    Serial.print(mpu.getAngleX());
-    Serial.print("\tY : ");
-    Serial.print(mpu.getAngleY());
-    Serial.print("\tZ : ");
-    Serial.println(mpu.getAngleZ());
-    timer = millis();
+    
+  if((millis()-timer)>1000) 
+  {                                                                
+    Serial.print("Pitch: ");
+    Serial.println(mpu.getAngleX());
+    Serial.print("Roll: ");
+    Serial.println(mpu.getAngleY());
+    Serial.print("Yaw: ");
+    Serial.print(mpu.getAngleZ());
+    Serial.println("\n");
+    timer = millis();  
   }
-
-    if (mySerial.available() > 0) {
-        Serial.print (mySerial.read());
-    }
 }
