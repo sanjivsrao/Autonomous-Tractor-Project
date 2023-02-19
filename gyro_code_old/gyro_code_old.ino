@@ -10,7 +10,6 @@ SoftwareSerial mySerial =  SoftwareSerial(rxPin, txPin);
 MPU6050 mpu(Wire);
 
 void setup()  {
-   
     // Define pin modes for TX and RX
     pinMode(rxPin, INPUT);
     pinMode(txPin, OUTPUT);
@@ -19,7 +18,6 @@ void setup()  {
     mpu.calcOffsets();
     // Set the baud rate for the SoftwareSerial object
     mySerial.begin(9600);
-     Serial.print("hie");
 }
 
 void loop() {
