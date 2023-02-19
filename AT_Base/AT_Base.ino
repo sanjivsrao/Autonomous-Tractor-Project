@@ -23,7 +23,7 @@
 //bluetooth serial
 SoftwareSerial mySerial(8,9);
 
-// Set up a new SoftwareSerial object
+// Set up the I2C connection with the gyroscope
 MPU6050 mpu(Wire);
 
 const unsigned long motorTimerPreset = 2000;  // two seconds
@@ -35,14 +35,15 @@ bool buttonControl = true;
 // states the tractor could be in
 enum {OFF, MOVE, TURN90, TURN180};
 unsigned char currentState;  // tractor state at any given moment
-// bluetooth char
+// bt char
 char bt;
-// gyroscope float
-float z;
 
 void setup() {
   Serial.begin(9600);
+<<<<<<< HEAD
   mySerial.begin(9600);
+=======
+>>>>>>> parent of b541563 (Update AT_Base.ino)
   Wire.begin();
   
   pinMode(rxPin, INPUT);
@@ -65,10 +66,8 @@ void setup() {
   digitalWrite(in4, LOW);
   //gyro setup
   mpu.begin();
-  mpu.calcOffsets();
-  mySerial.begin(9600);
+  mpu.calcGyroOffsets();
   
-  Serial.begin(9600);
  //init state
  currentState = OFF;
 }
@@ -76,20 +75,27 @@ void setup() {
 void loop() {
   mpu.update();
   
+  
   //debounce button
   if (digitalRead(buttonPin) == false) {
     buttonState = !buttonState;
   }
+<<<<<<< HEAD
   buttonState = digitalRead(buttonPin);
   if (buttonState == HIGH){
     buttonControl != buttonControl;
     delay (1000);
+=======
+  while (digitalRead(buttonPin) == true) {
+    delay(100);
+>>>>>>> parent of b541563 (Update AT_Base.ino)
   }
   //debounce button
 
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
       Serial.println("OFF");
+<<<<<<< HEAD
       if (mySerial.available()>0) {
         bt = mySerial.read();
           if (bt == 'o') {
@@ -101,32 +107,34 @@ void loop() {
       else {
         currentState = OFF;
         break;
+=======
+        if (mySerial.available()>0) {
+          bt = mySerial.read();   
+            if (bt == 'o' || buttonState == HIGH) {
+              currentState = MOVE;
+              break;
+            }
+        }  
+        else {
+          currentState = OFF;
+          break;
+>>>>>>> parent of b541563 (Update AT_Base.ino)
       }
       
     case MOVE:
       Serial.println("Moving!!!!!");
+<<<<<<< HEAD
       if ((cmd == "off") || (buttonControl == false)) {
           currentState = OFF;
           break;
+=======
+      if (buttonState == LOW && bt != 'o') {
+        currentState = OFF;
+        break;
+>>>>>>> parent of b541563 (Update AT_Base.ino)
       }
-      analogWrite(enA, 200);
-      analogWrite(enB, 200);
-      z = mpu.getAngleZ();
-      if (accumulatedMillis > 5000) {
-        while (z > 0) {
-          analogWrite(enA, 150);
-          analogWrite(enB, 200); 
-          currentState = MOVE;
-          break;
-        }
-        while(z < 0) {
-          analogWrite(enA, 200);
-          analogWrite(enB, 150);
-          currentState = MOVE;
-          break;
-        }
-      }
-      break;
+      analogWrite(enA, 255);
+      analogWrite(enB, 255);
       
 //      digitalWrite(openLED, motorRun);
       //
