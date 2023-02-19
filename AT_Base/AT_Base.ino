@@ -13,9 +13,9 @@
 #define buttonPin 12
 
 //motor pins
-#define enA 9
-#define in1 6
-#define in2 7
+#define enA 11
+#define in1 7
+#define in2 6
 
 //bluetooth serial
 SoftwareSerial mySerial(8,9);
@@ -46,16 +46,16 @@ void setup() {
   Serial.begin(9600);
   currentState = OFF;
   //sets init direction for motos
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, HIGH);
+  digitalWrite(in1, HIGH);
+  digitalWrite(in2, LOW);
   
 }
 
 void loop() {
   mpu.update();
+  buttonState = digitalRead(buttonPin);
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
-      buttonState = digitalRead(buttonPin);
       if (mySerial.available()>0) {
        char bt = mySerial.read();
         if (bt == 'o') {
@@ -75,6 +75,10 @@ void loop() {
     case MOVE:
       Serial.println("Moving!!!!!");
       analogWrite(enA, 100);
+       if (buttonState == LOW) {
+        currentState = OFF;
+        break;
+      }
 //      digitalWrite(openLED, motorRun);
       //
       // The compare below would be replaced by a test of a limit
