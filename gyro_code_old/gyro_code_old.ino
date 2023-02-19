@@ -1,12 +1,12 @@
 #include <SoftwareSerial.h>
 #include <MPU6050_light.h>
 #include "Wire.h"
-#define sdaPin 4
-#define sclPin 5
+#define rxPin 2
+#define txPin 3
 
 unsigned long timer = 0;
 // Set up a new SoftwareSerial object
-SoftwareSerial mySerial =  SoftwareSerial(sdaPin, sclPin);
+SoftwareSerial mySerial =  SoftwareSerial(rxPin, txPin);
 MPU6050 mpu(Wire);
 
 void setup()  {
@@ -18,7 +18,6 @@ void setup()  {
     mpu.calcOffsets();
     // Set the baud rate for the SoftwareSerial object
     mySerial.begin(9600);
-     Serial.print("hie");
 }
 
 void loop() {

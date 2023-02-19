@@ -8,7 +8,16 @@
 //communication pins
 #define rxPin 2
 #define txPin 3
+
+//push button pin
 #define buttonPin 12
+
+//motor pins
+#define enA 9
+#define in1 6
+#define in2 7
+
+//bluetooth serial
 SoftwareSerial mySerial(8,9);
 
 // Set up a new SoftwareSerial object
@@ -28,10 +37,18 @@ void setup() {
   pinMode(rxPin, INPUT);
   pinMode(txPin, OUTPUT);
   pinMode(buttonPin, INPUT);
+  pinMode(enA, OUTPUT);
+  pinMode(in1, OUTPUT);
+  pinMode(in2, OUTPUT);
   mpu.begin();
   mpu.calcOffsets();
   mySerial.begin(9600);
-  Serial.begin(9600);   
+  Serial.begin(9600);
+  currentState = OFF;
+  //sets init direction for motos
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+  
 }
 
 void loop() {
@@ -43,16 +60,21 @@ void loop() {
        char bt = mySerial.read();
         if (bt == 'o') {
           currentState = MOVE;
+          break;
         }  
       }
-      if (buttonState == HIGH) {
+      else if (buttonState == HIGH) {
         currentState = MOVE;
-        Serial.write("YAY");
+        break;
       }
-      break;
+      else {
+        currentState = OFF;
+        break;
+      }
       
     case MOVE:
-      Serial.println("door opening");
+      Serial.println("Moving!!!!!");
+      analogWrite(enA, 100);
 //      digitalWrite(openLED, motorRun);
       //
       // The compare below would be replaced by a test of a limit
