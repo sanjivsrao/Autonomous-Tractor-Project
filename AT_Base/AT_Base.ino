@@ -23,7 +23,7 @@
 //bluetooth serial
 SoftwareSerial mySerial(8,9);
 
-// Set up the I2C connection with the gyroscope
+// Set up a new SoftwareSerial object
 MPU6050 mpu(Wire);
 
 const unsigned long motorTimerPreset = 2000;  // two seconds
@@ -34,13 +34,13 @@ int buttonState = false;
 // states the tractor could be in
 enum {OFF, MOVE, TURN90, TURN180};
 unsigned char currentState;  // tractor state at any given moment
-// bt char
+// bluetooth char
 char bt;
+// gyroscope float
+float z;
 
 void setup() {
-  Serial.begin(9600);
-  Wire.begin();
-  
+  Serial.begin(115200);
   pinMode(rxPin, INPUT);
   pinMode(txPin, OUTPUT);
   //button
@@ -61,8 +61,10 @@ void setup() {
   digitalWrite(in4, LOW);
   //gyro setup
   mpu.begin();
-  mpu.calcGyroOffsets();
+  mpu.calcOffsets();
+  mySerial.begin(9600);
   
+  Serial.begin(9600);
  //init state
  currentState = OFF;
 }
@@ -70,13 +72,12 @@ void setup() {
 void loop() {
   mpu.update();
   
-  
   //debounce button
   if (digitalRead(buttonPin) == true) {
     buttonState = !buttonState;
   }
   while (digitalRead(buttonPin) == true) {
-    delay(100);
+    delay(20);
   }
 
   switch (currentState) {
@@ -88,6 +89,7 @@ void loop() {
           bt = mySerial.read();   
             if (bt == 'o' || buttonState == HIGH) {
               currentState = MOVE;
+              timerMillis = millis();
               break;
             }
         }  
@@ -100,10 +102,27 @@ void loop() {
       Serial.println("Moving!!!!!");
       if (buttonState == LOW && bt != 'o') {
         currentState = OFF;
+        timerMillis = millis();
         break;
       }
-      analogWrite(enA, 255);
-      analogWrite(enB, 255);
+      analogWrite(enA, 200);
+      analogWrite(enB, 200);
+      z = mpu.getAngleZ();
+      if (accumulatedMillis > 5000) {
+        while (z > 0) {
+          analogWrite(enA, 150);
+          analogWrite(enB, 200); 
+          currentState = MOVE;
+          break;
+        }
+        while(z < 0) {
+          analogWrite(enA, 200);
+          analogWrite(enB, 150);
+          currentState = MOVE;
+          break;
+        }
+      }
+      break;
       
 //      digitalWrite(openLED, motorRun);
       //
