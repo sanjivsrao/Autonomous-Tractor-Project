@@ -23,7 +23,7 @@
 //bluetooth serial
 SoftwareSerial mySerial(8,9);
 
-// Set up the I2C connection with the gyroscope
+// Set up a new SoftwareSerial object
 MPU6050 mpu(Wire);
 
 const unsigned long motorTimerPreset = 2000;  // two seconds
@@ -35,8 +35,10 @@ bool buttonControl = true;
 // states the tractor could be in
 enum {OFF, MOVE, TURN90, TURN180};
 unsigned char currentState;  // tractor state at any given moment
-// bt char
+// bluetooth char
 char bt;
+// gyroscope float
+float z;
 
 void setup() {
   Serial.begin(9600);
@@ -63,17 +65,20 @@ void setup() {
   digitalWrite(in4, LOW);
   //gyro setup
   mpu.begin();
-  mpu.calcGyroOffsets();
+  mpu.calcOffsets();
+  mySerial.begin(9600);
   
+  Serial.begin(9600);
  //init state
  currentState = OFF;
 }
 
 void loop() {
   mpu.update();
-  String cmd;
-  if (mySerial.available()){
-    cmd = cmd_read();
+  
+  //debounce button
+  if (digitalRead(buttonPin) == false) {
+    buttonState = !buttonState;
   }
   buttonState = digitalRead(buttonPin);
   if (buttonState == HIGH){
@@ -85,9 +90,13 @@ void loop() {
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
       Serial.println("OFF");
-      if ((cmd == "on") || (buttonControl == true)) {
-        currentState = MOVE;
-        break;
+      if (mySerial.available()>0) {
+        bt = mySerial.read();
+          if (bt == 'o') {
+            currentState = MOVE;
+            timerMillis = millis();
+            break;
+          }
       }  
       else {
         currentState = OFF;
@@ -95,13 +104,29 @@ void loop() {
       }
       
     case MOVE:
+      Serial.println("Moving!!!!!");
       if ((cmd == "off") || (buttonControl == false)) {
           currentState = OFF;
           break;
       }
-      Serial.println("Moving!!!!!");
-      analogWrite(enA, 255);
-      analogWrite(enB, 255);
+      analogWrite(enA, 200);
+      analogWrite(enB, 200);
+      z = mpu.getAngleZ();
+      if (accumulatedMillis > 5000) {
+        while (z > 0) {
+          analogWrite(enA, 150);
+          analogWrite(enB, 200); 
+          currentState = MOVE;
+          break;
+        }
+        while(z < 0) {
+          analogWrite(enA, 200);
+          analogWrite(enB, 150);
+          currentState = MOVE;
+          break;
+        }
+      }
+      break;
       
 //      digitalWrite(openLED, motorRun);
       //
@@ -110,7 +135,6 @@ void loop() {
 //      if (accumulatedMillis >= motorTimerPreset) { // Door up
 //        digitalWrite( openLED, motorStop); // Stop the motor
 ////        doorState = doorIsUp; // The door is now open
-        break;
  
 
     case TURN90:
