@@ -8,8 +8,13 @@ delay(100);
 }
 void loop()
 {
-//if (Serial.available()>0)
-//mySerial.write(Serial.read());
-if (mySerial.available()>0)
-Serial.write(mySerial.read());
+String cmd;
+while (mySerial.available()==0){}
+cmd = mySerial.readString();
+if (cmd == "off"){
+  mySerial.println("Turning off Robot");
+}
+else{
+  mySerial.println("Invalid command");
+}
 }
