@@ -79,21 +79,21 @@ void loop() {
     delay(100);
   }
 
-  if (mySerial.available()>0) {
-    bt = mySerial.read();
-  }    
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
       analogWrite(enA, 0);
       analogWrite(enB, 0);
       Serial.println("OFF");
-        if (bt == 'o' || buttonState == HIGH) {
-          currentState = MOVE;
-          break;
+        if (mySerial.available()>0) {
+          bt = mySerial.read();   
+            if (bt == 'o' || buttonState == HIGH) {
+              currentState = MOVE;
+              break;
+            }
         }  
-      else {
-        currentState = OFF;
-        break;
+        else {
+          currentState = OFF;
+          break;
       }
       
     case MOVE:
