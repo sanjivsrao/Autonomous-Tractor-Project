@@ -13,15 +13,17 @@ void setup() {
  
 void loop() {
   mpu.update();
-    
+  float x = mpu.getAngleX();
+  float y = mpu.getAngleY();
+  float z = -(mpu.getAngleZ());
   if((millis()-timer)>1000) 
   {                                                                
-    Serial.print("Pitch: ");
-    Serial.println(mpu.getAngleX());
     Serial.print("Roll: ");
-    Serial.println(mpu.getAngleY());
+    Serial.println(x);
+    Serial.print("Pitch: ");
+    Serial.println(y);
     Serial.print("Yaw: ");
-    Serial.print(mpu.getAngleZ());
+    Serial.print(z);
     Serial.println("\n");
     timer = millis();  
   }

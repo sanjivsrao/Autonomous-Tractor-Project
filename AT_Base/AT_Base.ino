@@ -39,6 +39,7 @@ char bt;
 
 void setup() {
   Serial.begin(9600);
+  mySerial.begin(9600);
   Wire.begin();
   
   pinMode(rxPin, INPUT);
@@ -72,12 +73,12 @@ void loop() {
   
   
   //debounce button
-  if (digitalRead(buttonPin) == true) {
+  if (digitalRead(buttonPin) == false) {
     buttonState = !buttonState;
   }
-  while (digitalRead(buttonPin) == true) {
+  /*while (digitalRead(buttonPin) == true) {
     delay(100);
-  }
+  }*/
 
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
@@ -85,8 +86,8 @@ void loop() {
       analogWrite(enB, 0);
       Serial.println("OFF");
         if (mySerial.available()>0) {
-          bt = mySerial.read();   
-            if (bt == 'o' || buttonState == HIGH) {
+          bt = mySerial.read();
+            if (bt == 'o') {
               currentState = MOVE;
               break;
             }
@@ -97,8 +98,15 @@ void loop() {
       }
       
     case MOVE:
+    if (mySerial.available()>0) {
+          bt = mySerial.read();
+            if (bt == 'n') {
+              currentState = OFF;
+              break;
+            }
+        }
       Serial.println("Moving!!!!!");
-      if (buttonState == LOW && bt != 'o') {
+      if (buttonState == HIGH) {
         currentState = OFF;
         break;
       }
@@ -135,5 +143,17 @@ void loop() {
         Serial.write(mySerial.read());
       }
       break;
+  }
+}
+
+String cmd_read(){
+  String cmd;
+  while (mySerial.available()==0){}
+  cmd = mySerial.readString();
+  if (cmd == "off"){
+    mySerial.println("Turning off Robot");
+  }
+  else{
+    mySerial.println("Invalid command");
   }
 }
