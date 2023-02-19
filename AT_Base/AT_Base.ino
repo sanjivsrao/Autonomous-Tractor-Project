@@ -29,7 +29,8 @@ MPU6050 mpu(Wire);
 const unsigned long motorTimerPreset = 2000;  // two seconds
 unsigned long timerMillis;  // For counting time increments
 
-int buttonState = false;
+int buttonState = 0;
+bool buttonControl = true;
 
 // states the tractor could be in
 enum {OFF, MOVE, TURN90, TURN180};
@@ -70,46 +71,35 @@ void setup() {
 
 void loop() {
   mpu.update();
-  
-  
-  //debounce button
-  if (digitalRead(buttonPin) == false) {
-    buttonState = !buttonState;
+  String cmd;
+  if (mySerial.available()){
+    cmd = cmd_read();
   }
-  /*while (digitalRead(buttonPin) == true) {
-    delay(100);
-  }*/
+  buttonState = digitalRead(buttonPin);
+  if (buttonState == HIGH){
+    buttonControl != buttonControl;
+    delay (1000);
+  }
+  //debounce button
 
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
-      analogWrite(enA, 0);
-      analogWrite(enB, 0);
       Serial.println("OFF");
-        if (mySerial.available()>0) {
-          bt = mySerial.read();
-            if (bt == 'o') {
-              currentState = MOVE;
-              break;
-            }
-        }  
-        else {
-          currentState = OFF;
-          break;
-      }
-      
-    case MOVE:
-    if (mySerial.available()>0) {
-          bt = mySerial.read();
-            if (bt == 'n') {
-              currentState = OFF;
-              break;
-            }
-        }
-      Serial.println("Moving!!!!!");
-      if (buttonState == HIGH) {
+      if ((cmd == "on") || (buttonControl == true)) {
+        currentState = MOVE;
+        break;
+      }  
+      else {
         currentState = OFF;
         break;
       }
+      
+    case MOVE:
+      if ((cmd == "off") || (buttonControl == false)) {
+          currentState = OFF;
+          break;
+      }
+      Serial.println("Moving!!!!!");
       analogWrite(enA, 255);
       analogWrite(enB, 255);
       
@@ -144,6 +134,7 @@ void loop() {
       }
       break;
   }
+  cmd = "";
 }
 
 String cmd_read(){
@@ -152,6 +143,9 @@ String cmd_read(){
   cmd = mySerial.readString();
   if (cmd == "off"){
     mySerial.println("Turning off Robot");
+  }
+  else if (cmd == "on"){
+    mySerial.println("Turning on Robot");
   }
   else{
     mySerial.println("Invalid command");
