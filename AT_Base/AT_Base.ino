@@ -78,6 +78,8 @@ void loop() {
   
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
+      analogWrite(enA, 0);
+      analogWrite(enB, 0);
       Serial.println("OFF");
       if (mySerial.available()>0) {
        char bt = mySerial.read();
