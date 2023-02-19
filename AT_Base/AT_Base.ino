@@ -34,6 +34,8 @@ int buttonState = false;
 // states the tractor could be in
 enum {OFF, MOVE, TURN90, TURN180};
 unsigned char currentState;  // tractor state at any given moment
+// bt char
+char bt;
 
 void setup() {
   Serial.begin(115200);
@@ -75,23 +77,19 @@ void loop() {
   while (digitalRead(buttonPin) == true) {
     delay(20);
   }
-  
+
+  if (mySerial.available()>0) {
+    bt = mySerial.read();
+  }    
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
       analogWrite(enA, 0);
       analogWrite(enB, 0);
       Serial.println("OFF");
-      if (mySerial.available()>0) {
-       char bt = mySerial.read();
-        if (bt == 'o') {
+        if (bt == 'o' || buttonState == HIGH) {
           currentState = MOVE;
           break;
         }  
-      }
-      else if (buttonState == HIGH) {
-        currentState = MOVE;
-        break;
-      }
       else {
         currentState = OFF;
         break;
@@ -99,7 +97,7 @@ void loop() {
       
     case MOVE:
       Serial.println("Moving!!!!!");
-      if (buttonState == LOW) {
+      if (buttonState == LOW && bt != 'o') {
         currentState = OFF;
         break;
       }
