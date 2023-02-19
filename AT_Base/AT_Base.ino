@@ -23,7 +23,7 @@
 //bluetooth serial
 SoftwareSerial mySerial(8,9);
 
-// Set up a new SoftwareSerial object
+// Set up the I2C connection with the gyroscope
 MPU6050 mpu(Wire);
 
 const unsigned long motorTimerPreset = 2000;  // two seconds
@@ -38,7 +38,9 @@ unsigned char currentState;  // tractor state at any given moment
 char bt;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
+  Wire.begin();
+  
   pinMode(rxPin, INPUT);
   pinMode(txPin, OUTPUT);
   //button
@@ -59,10 +61,8 @@ void setup() {
   digitalWrite(in4, LOW);
   //gyro setup
   mpu.begin();
-  mpu.calcOffsets();
-  mySerial.begin(9600);
+  mpu.calcGyroOffsets();
   
-  Serial.begin(9600);
  //init state
  currentState = OFF;
 }
@@ -70,12 +70,13 @@ void setup() {
 void loop() {
   mpu.update();
   
+  
   //debounce button
   if (digitalRead(buttonPin) == true) {
     buttonState = !buttonState;
   }
   while (digitalRead(buttonPin) == true) {
-    delay(20);
+    delay(100);
   }
 
   if (mySerial.available()>0) {
