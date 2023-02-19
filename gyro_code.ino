@@ -1,39 +1,49 @@
-#include <SoftwareSerial.h>
-#include <MPU6050_light.h>
-#include "Wire.h"
-#define rxPin 2
-#define txPin 3
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <Wire.h>
 
-unsigned long timer = 0;
-// Set up a new SoftwareSerial object
-SoftwareSerial mySerial =  SoftwareSerial(rxPin, txPin);
-MPU6050 mpu(Wire);
+Adafruit_MPU6050 mpu;
 
-void setup()  {
-    // Define pin modes for TX and RX
-    pinMode(rxPin, INPUT);
-    pinMode(txPin, OUTPUT);
-    mpu.begin();
-    delay(1000);
-    mpu.calcOffsets();
-    // Set the baud rate for the SoftwareSerial object
-    mySerial.begin(9600);
+void setup(void) {
+	Serial.begin(115200);
+
+	// Initialization code which prints an error message if chip was not located
+	if (!mpu.begin()) {
+		Serial.println("Failed to find MPU6050 chip");
+		while (1) {
+		  delay(10);
+		}
+	}
+  // set accelerometer range to +- 2g (using smallest acceleration range for extra precision)
+  mpu.setAccelerometerRange(MPU6050_RANGE_2_G);
+	// set gyro range to +- 1000 deg/s (using a less precise measurement range)
+	mpu.setGyroRange(MPU6050_RANGE_500_DEG);
+
+	// set filter bandwidth to 44 Hz (arbitrary value)
+	mpu.setFilterBandwidth(MPU6050_BAND_44_HZ);
+
+	delay(100);
 }
 
 void loop() {
-  mpu.update();
+	/* Get new sensor events with the readings */
+	sensors_event_t g, a;
+	mpu.getEvent(&a, &g);
 
-  if((millis()-timer)>10){ // print data every 10ms
-    Serial.print("X : ");
-    Serial.print(mpu.getAngleX());
-    Serial.print("\tY : ");
-    Serial.print(mpu.getAngleY());
-    Serial.print("\tZ : ");
-    Serial.println(mpu.getAngleZ());
-    timer = millis();
-  }
+	/* Print out the values */
+	Serial.print(a.acceleration.x);
+	Serial.print(",");
+	Serial.print(a.acceleration.y);
+	Serial.print(",");
+	Serial.print(a.acceleration.z);
 
-    if (mySerial.available() > 0) {
-        Serial.print (mySerial.read());
-    }
+	Serial.println("");
+
+  Serial.print("Rotation X: ");
+	Serial.print(g.gyro.x);
+	Serial.print(", Y: ");
+	Serial.print(g.gyro.y);
+	Serial.print(", Z: ");
+	Serial.print(g.gyro.z);
+	Serial.println(" rad/s");
 }
