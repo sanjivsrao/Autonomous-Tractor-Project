@@ -29,13 +29,14 @@ MPU6050 mpu(Wire);
 const unsigned long motorTimerPreset = 2000;  // two seconds
 unsigned long timerMillis;  // For counting time increments
 
-int buttonState = false;
+int buttonState;
+bool switcher = false;
 
 // states the tractor could be in
 enum {OFF, MOVE, TURN90, TURN180};
 unsigned char currentState;  // tractor state at any given moment
 // bluetooth char
-char bt;
+  String cmd;
 // gyroscope float
 float z;
 
@@ -71,42 +72,52 @@ void setup() {
 
 void loop() {
   mpu.update();
+  if (mySerial.available()){
+    cmd = mySerial.readString();
+    if (cmd == "off"){
+      mySerial.println("Turning off Robot");
+    }
+    else if (cmd == "on"){
+      mySerial.println("Turning on Robot");
+    }
+    else{
+      mySerial.println("Invalid command");
+    }
+  }
   
+  buttonState = digitalRead(buttonPin);
+  Serial.println(buttonState);
+  if (buttonState == 1){
+    switcher = true;
+  }
+  delay (125);
   //debounce button
-  if (digitalRead(buttonPin) == true) {
-    buttonState = !buttonState;
-  }
-  while (digitalRead(buttonPin) == true) {
-    delay(20);
-  }
-
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
       analogWrite(enA, 0);
       analogWrite(enB, 0);
-      Serial.println("OFF");
-        if (mySerial.available()>0) {
-          bt = mySerial.read();   
-            if (bt == 'o' || buttonState == HIGH) {
-              currentState = MOVE;
-              timerMillis = millis();
-              break;
-            }
-        }  
-        else {
-          currentState = OFF;
-          break;
+      Serial.println("OFF"); 
+      if (cmd == "on" || switcher) {
+        switcher = false;
+        currentState = MOVE;
+        timerMillis = millis();
+        break;
+      }
+      else {
+        currentState = OFF;
+        break;
       }
       
     case MOVE:
       Serial.println("Moving!!!!!");
-      if (buttonState == LOW && bt != 'o') {
+      analogWrite(enA, 200);
+      analogWrite(enB, 200);
+      if (cmd == "off" || switcher) {
+        switcher = false;
         currentState = OFF;
         timerMillis = millis();
         break;
       }
-      analogWrite(enA, 200);
-      analogWrite(enB, 200);
       z = mpu.getAngleZ();
       if (accumulatedMillis > 5000) {
         while (z > 0) {
@@ -155,4 +166,7 @@ void loop() {
       }
       break;
   }
+  // Clears the command
+  cmd = "";
+  buttonState = 0;
 }
