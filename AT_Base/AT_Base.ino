@@ -21,7 +21,7 @@
 #define in3 5
 #define in4 4
 //bluetooth serial
-SoftwareSerial mySerial(8,9);
+SoftwareSerial mySerial(8, 9);
 
 // Set up a new SoftwareSerial object
 MPU6050 mpu(Wire);
@@ -36,9 +36,10 @@ bool switcher = false;
 enum {OFF, MOVE, TURN90, TURN180};
 unsigned char currentState;  // tractor state at any given moment
 // bluetooth char
-  String cmd;
+String cmd;
 // gyroscope float
 float z;
+float z_init;
 
 void setup() {
   Serial.begin(115200);
@@ -61,53 +62,53 @@ void setup() {
   digitalWrite(in3, HIGH);
   digitalWrite(in4, LOW);
   //gyro setup
+  Wire.begin();
   mpu.begin();
   mpu.calcOffsets();
   mySerial.begin(9600);
-  
+  z_init = mpu.getAngleZ();
   Serial.begin(9600);
- //init state
- currentState = OFF;
+  //init state
+  currentState = OFF;
 }
 
 void loop() {
   mpu.update();
-  if (mySerial.available()){
+  if (mySerial.available()) {
     cmd = mySerial.readString();
-    if (cmd == "off"){
+    if (cmd == "off") {
       mySerial.println("Turning off Robot");
     }
-    else if (cmd == "on"){
+    else if (cmd == "on") {
       mySerial.println("Turning on Robot");
     }
-    else{
+    else {
       mySerial.println("Invalid command");
     }
   }
-  
+
   buttonState = digitalRead(buttonPin);
   Serial.println(buttonState);
-  if (buttonState == 1){
+  if (buttonState == 1) {
     switcher = true;
   }
-  delay (125);
+  delay (250);
   //debounce button
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
       analogWrite(enA, 0);
       analogWrite(enB, 0);
-      Serial.println("OFF"); 
+      Serial.println("OFF");
       if (cmd == "on" || switcher) {
         switcher = false;
         currentState = MOVE;
-        timerMillis = millis();
         break;
       }
       else {
         currentState = OFF;
         break;
       }
-      
+
     case MOVE:
       Serial.println("Moving!!!!!");
       analogWrite(enA, 200);
@@ -119,49 +120,53 @@ void loop() {
         break;
       }
       z = mpu.getAngleZ();
-      if (accumulatedMillis > 5000) {
-        while (z > 0) {
-          analogWrite(enA, 150);
-          analogWrite(enB, 200); 
+      Serial.println(z);
+      if ((millis() - timerMillis) > 1000) {
+        if (z > 0) {
+          analogWrite(enA, 100);
+          analogWrite(enB, 140);
           currentState = MOVE;
+          delay(1000);
           break;
         }
-        while(z < 0) {
-          analogWrite(enA, 200);
-          analogWrite(enB, 150);
+        if (z < 0) {
+          analogWrite(enA, 140);
+          analogWrite(enB, 100);
           currentState = MOVE;
+          delay(1000);
           break;
         }
+        timerMillis = millis();
       }
       break;
-      
-//      digitalWrite(openLED, motorRun);
+
+      //      digitalWrite(openLED, motorRun);
       //
       // The compare below would be replaced by a test of a limit
       // switch, or other sensor, in a real application.
-//      if (accumulatedMillis >= motorTimerPreset) { // Door up
-//        digitalWrite( openLED, motorStop); // Stop the motor
-////        doorState = doorIsUp; // The door is now open
-        break;
- 
+      //      if (accumulatedMillis >= motorTimerPreset) { // Door up
+      //        digitalWrite( openLED, motorStop); // Stop the motor
+      ////        doorState = doorIsUp; // The door is now open
+      break;
+
 
     case TURN90:
       Serial.println("door up");
-//      if (digitalRead(switchInput) == LOW) { // switchInput pressed
-//        timerMillis = millis(); // reset the timer
-////        doorState = doorClosing; // Advance to the next state
-//        break;
-//      }
-//      else { // switchInput was not pressed
-//        break;
-//      }
+    //      if (digitalRead(switchInput) == LOW) { // switchInput pressed
+    //        timerMillis = millis(); // reset the timer
+    ////        doorState = doorClosing; // Advance to the next state
+    //        break;
+    //      }
+    //      else { // switchInput was not pressed
+    //        break;
+    //      }
 
     case TURN180:
       Serial.println("door closing");
 
     default:
       Serial.println("\n We hit the default");
-      if (mySerial.available()>0) {
+      if (mySerial.available() > 0) {
         Serial.write(mySerial.read());
       }
       break;

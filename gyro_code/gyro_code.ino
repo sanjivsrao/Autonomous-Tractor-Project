@@ -2,7 +2,7 @@
 #include <MPU6050_light.h>
 #include "Wire.h"
 
-
+//test
 #define accumulatedMillis millis() - timerMillis
 
 //communication pins
@@ -28,16 +28,18 @@ MPU6050 mpu(Wire);
 
 const unsigned long motorTimerPreset = 2000;  // two seconds
 unsigned long timerMillis;  // For counting time increments
-
-int buttonState = false;
+unsigned long timer = 0;
+int buttonState;
+bool switcher = false;
 
 // states the tractor could be in
 enum {OFF, MOVE, TURN90, TURN180};
 unsigned char currentState;  // tractor state at any given moment
 // bluetooth char
-char bt;
+  String cmd;
 // gyroscope float
 float z;
+float z_init;
 
 void setup() {
   Serial.begin(115200);
@@ -60,10 +62,10 @@ void setup() {
   digitalWrite(in3, HIGH);
   digitalWrite(in4, LOW);
   //gyro setup
+  Wire.begin();
   mpu.begin();
   mpu.calcOffsets();
   mySerial.begin(9600);
-  
   Serial.begin(9600);
  //init state
  currentState = OFF;
@@ -71,20 +73,19 @@ void setup() {
 
 void loop() {
   mpu.update();
-  analogWrite(enA, 150);
-  analogWrite(enB, 150);
-  z = mpu.getAngleZ();
-  if (accumulatedMillis > 5000) {
-    while (z > 0) {
-      analogWrite(enA, 50);
-      analogWrite(enB, 75); 
+  if((millis()-timer)>1000) 
+  {                                                                
+    
+    Serial.print("Yaw: ");
+    float z = mpu.getAngleZ();
+    Serial.print(mpu.getAngleZ());
+    if (z > 0) {
+      Serial.print("yeet");
+      analogWrite(enA, 200);
+          analogWrite(enB, 180);
+      
     }
-    while(z < 0) {
-      analogWrite(enA, 75);
-      analogWrite(enB, 50);
-    }
+    Serial.println("\n");
+    timer = millis();  
   }
-
-
-   
 }
