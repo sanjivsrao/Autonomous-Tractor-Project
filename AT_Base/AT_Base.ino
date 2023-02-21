@@ -26,7 +26,6 @@ SoftwareSerial mySerial(8, 9);
 // Set up a new SoftwareSerial object
 MPU6050 mpu(Wire);
 
-const unsigned long motorTimerPreset = 2000;  // two seconds
 unsigned long timer = 0;
 
 int buttonState;
@@ -97,7 +96,6 @@ void loop() {
   //debounce button
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
-      delay (250);
       button_check();
       analogWrite(enA, 0);
       analogWrite(enB, 0);
@@ -124,18 +122,22 @@ void loop() {
       analogWrite(enA, 200);
       analogWrite(enB, 200);                                                       
       if (z > z_init) {
-        mySerial.println("turn left");
-        analogWrite(enA, 180);
-        analogWrite(enB, 130);
-        delay(500);
+        while (z > z_init){
+          mySerial.println("correcting left");
+          analogWrite(enA, 180);
+          analogWrite(enB, 130);
+          delay (10);
+        }
         currentState = MOVE;
         break;
       }
       if (z < z_init) {
-        mySerial.println("turn right");
-        analogWrite(enA, 130);
-        analogWrite(enB, 180);
-        delay(500);
+        while (z > z_init){
+          mySerial.println("correcting right");
+          analogWrite(enA, 130);
+          analogWrite(enB, 180);
+          delay (10);
+        }
         currentState = MOVE;
         break;
       }
