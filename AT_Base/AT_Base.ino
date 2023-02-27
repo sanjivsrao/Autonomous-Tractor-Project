@@ -30,14 +30,18 @@ unsigned long timer = 0;
 
 // states the tractor could be in
 enum {OFF, MOVE, TURN90, TURN180};
+unsigned char currentState;  // tractor state at any given moment
 
 // states the button can be in
 enum {PUSHED, RELEASED};
 
 unsigned char buttonState; // button state at any given moment
 bool buttonCommand; // boolean conversion from button input
-bool buttonPressed; // command boolean used for directing tractor FSM logic
-unsigned char currentState;  // tractor state at any given moment
+int buttonRead; // command boolean used for directing tractor FSM logic
+unsigned long debounceDelay = 50;
+unsigned long debounceTime = 0;
+
+
 // bluetooth char
 String cmd;
 // gyroscope float
@@ -77,7 +81,6 @@ void setup() {
   currentState = OFF;
   buttonState = RELEASED;
   buttonCommand = false;
-  buttonPressed = false;
 }
 
 void loop() {
@@ -102,15 +105,19 @@ void loop() {
   //debounce button
   switch (buttonState) {
     case PUSHED:
-      buttonPressed = button_check();
-      if (!buttonPressed){buttonState=RELEASED;}
+      buttonRead = digitalRead(buttonPin);
+      if (!buttonRead){
+        buttonState=RELEASED;
+        debounceTime = millis();
+      }   
       break;
     case RELEASED:
-      buttonPressed = button_check();
-      if (buttonPressed){
+      buttonRead = digitalRead(buttonPin);
+      if (buttonRead){
         buttonState = PUSHED;
-        buttonCommand = true;      
+        buttonCommand = true; 
       }
+      break;
   }
 
 
@@ -139,7 +146,7 @@ void loop() {
       mySerial.println("Moving!!!!!");
       analogWrite(enA, 200);
       analogWrite(enB, 200);                                                       
-      if (z > z_init) {
+      /*if (z > z_init) {
         while (z > z_init){
           mySerial.println("correcting left");
           analogWrite(enA, 180);
@@ -158,7 +165,7 @@ void loop() {
         }
         currentState = MOVE;
         break;
-      }
+      }*/
       
       break;
 
@@ -197,12 +204,3 @@ void loop() {
   cmd = "";
 }
 
-bool button_check(){
-  int buttonPressed = digitalRead(buttonPin);
-  if (buttonPressed==1){
-    return true;     
-  }
-  else if (buttonPressed!=1){
-    return false;
-  }
-}
