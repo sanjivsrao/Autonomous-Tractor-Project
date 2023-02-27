@@ -28,11 +28,15 @@ MPU6050 mpu(Wire);
 
 unsigned long timer = 0;
 
-int buttonState;
-bool switcher = false;
-
 // states the tractor could be in
 enum {OFF, MOVE, TURN90, TURN180};
+
+// states the button can be in
+enum {PUSHED, RELEASED};
+
+unsigned char buttonState; // button state at any given moment
+bool buttonCommand; // boolean conversion from button input
+bool buttonPressed; // command boolean used for directing tractor FSM logic
 unsigned char currentState;  // tractor state at any given moment
 // bluetooth char
 String cmd;
@@ -71,6 +75,9 @@ void setup() {
 
   //init state
   currentState = OFF;
+  buttonState = RELEASED;
+  buttonCommand = false;
+  buttonPressed = false;
 }
 
 void loop() {
@@ -91,29 +98,40 @@ void loop() {
       mySerial.println("Invalid command");
     }
   }
-  button_check();
   
   //debounce button
+  switch (buttonState) {
+    case PUSHED:
+      buttonPressed = button_check();
+      if (!buttonPressed){buttonState=RELEASED;}
+      break;
+    case RELEASED:
+      buttonPressed = button_check();
+      if (buttonPressed){
+        buttonState = PUSHED;
+        buttonCommand = true;      
+      }
+  }
+
+
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
-      button_check();
       analogWrite(enA, 0);
       analogWrite(enB, 0);
       mySerial.println("OFF");
-      if (cmd == "on" || switcher) {
-        switcher = false;
+      if (cmd == "on" || buttonCommand) {
+        buttonCommand = false;
         currentState = MOVE;
         break;
       }
-      else {
+      else {        
         currentState = OFF;
         break;
       }
 
     case MOVE:
-      button_check();
-      if (cmd == "off" || switcher) {
-        switcher = false;
+      if (cmd == "off" || buttonCommand) {
+        buttonCommand = false;
         currentState = OFF;
         timer = millis();
         break;
@@ -131,7 +149,7 @@ void loop() {
         currentState = MOVE;
         break;
       }
-      if (z < z_init) {
+      else if (z < z_init) {
         while (z > z_init){
           mySerial.println("correcting right");
           analogWrite(enA, 130);
@@ -177,14 +195,14 @@ void loop() {
   }
   // Clears the command
   cmd = "";
-  buttonState = 0;
 }
 
-void button_check(){
-  buttonState = digitalRead(buttonPin);
-  Serial.println(buttonState);
-  if (buttonState == 1) {
-    switcher = true;
+bool button_check(){
+  int buttonPressed = digitalRead(buttonPin);
+  if (buttonPressed==1){
+    return true;     
   }
-  delay (100);
+  else if (buttonPressed!=1){
+    return false;
+  }
 }
