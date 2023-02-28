@@ -59,15 +59,15 @@ void setup() {
   pinMode(in1, OUTPUT);
   pinMode(in2, OUTPUT);
   //init direction for left motor
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
   //right motor
   pinMode(enB, OUTPUT);
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
   //init direction for right motor
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
 
   
   //gyro setup
@@ -137,47 +137,39 @@ void loop() {
       }
 
     case MOVE:
+      mySerial.println(z);
+      updateZ();
       if (cmd == "off" || buttonCommand) {
         buttonCommand = false;
         currentState = OFF;
         timer = millis();
         break;
       }       
-      mySerial.println("Moving!!!!!");
+      mySerial.println("Moving!!!!!");   
       analogWrite(enA, 200);
-      analogWrite(enB, 200);                                                       
-      /*if (z > z_init) {
-        while (z > z_init){
-          mySerial.println("correcting left");
-          analogWrite(enA, 180);
-          analogWrite(enB, 130);
-          delay (10);
-        }
-        currentState = MOVE;
-        break;
+      analogWrite(enB, 200); 
+                                                         
+      if (z > z_init+5 && z < 45) {
+        updateZ();
+        analogWrite(enA, 160);
+        analogWrite(enB, 190);
       }
-      else if (z < z_init) {
-        while (z > z_init){
-          mySerial.println("correcting right");
-          analogWrite(enA, 130);
-          analogWrite(enB, 180);
-          delay (10);
-        }
-        currentState = MOVE;
-        break;
-      }*/
-      
-      break;
-
-      //      digitalWrite(openLED, motorRun);
-      //
-      // The compare below would be replaced by a test of a limit
-      // switch, or other sensor, in a real application.
-      //      if (accumulatedMillis >= motorTimerPreset) { // Door up
-      //        digitalWrite( openLED, motorStop); // Stop the motor
-      ////        doorState = doorIsUp; // The door is now open
-      break;
-
+      else if (z > z_init+5 && z > 45){
+        updateZ();
+        analogWrite(enA, 120);
+        analogWrite(enB, 170);        
+      }
+      if (z < z_init-5 && z > -45) {
+        updateZ();
+        analogWrite(enA, 190);
+        analogWrite(enB, 160);
+      }
+      else if (z < z_init-5 && z < -45){
+        updateZ();
+        analogWrite(enA, 170);
+        analogWrite(enB, 120);        
+      }
+      break;      
 
     case TURN90:
       Serial.println("door up");
@@ -204,3 +196,6 @@ void loop() {
   cmd = "";
 }
 
+void updateZ(){
+  z = -(mpu.getAngleZ());
+}
