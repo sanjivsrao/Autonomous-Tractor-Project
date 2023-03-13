@@ -26,15 +26,22 @@ SoftwareSerial mySerial(8, 9);
 // Set up a new SoftwareSerial object
 MPU6050 mpu(Wire);
 
-const unsigned long motorTimerPreset = 2000;  // two seconds
 unsigned long timer = 0;
-
-int buttonState;
-bool switcher = false;
 
 // states the tractor could be in
 enum {OFF, MOVE, TURN90, TURN180};
 unsigned char currentState;  // tractor state at any given moment
+
+// states the button can be in
+enum {PUSHED, RELEASED};
+
+unsigned char buttonState; // button state at any given moment
+bool buttonCommand; // boolean conversion from button input
+int buttonRead; // command boolean used for directing tractor FSM logic
+unsigned long debounceDelay = 50;
+unsigned long debounceTime = 0;
+
+
 // bluetooth char
 String cmd;
 // gyroscope float
@@ -52,15 +59,15 @@ void setup() {
   pinMode(in1, OUTPUT);
   pinMode(in2, OUTPUT);
   //init direction for left motor
-  digitalWrite(in1, HIGH);
-  digitalWrite(in2, LOW);
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
   //right motor
   pinMode(enB, OUTPUT);
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
   //init direction for right motor
-  digitalWrite(in3, HIGH);
-  digitalWrite(in4, LOW);
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
 
   
   //gyro setup
@@ -72,6 +79,8 @@ void setup() {
 
   //init state
   currentState = OFF;
+  buttonState = RELEASED;
+  buttonCommand = false;
 }
 
 void loop() {
@@ -92,65 +101,75 @@ void loop() {
       mySerial.println("Invalid command");
     }
   }
-  button_check();
   
   //debounce button
+  switch (buttonState) {
+    case PUSHED:
+      buttonRead = digitalRead(buttonPin);
+      if (!buttonRead){
+        buttonState=RELEASED;
+        debounceTime = millis();
+      }   
+      break;
+    case RELEASED:
+      buttonRead = digitalRead(buttonPin);
+      if (buttonRead){
+        buttonState = PUSHED;
+        buttonCommand = true; 
+      }
+      break;
+  }
+
+
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
-      delay (250);
-      button_check();
       analogWrite(enA, 0);
       analogWrite(enB, 0);
       mySerial.println("OFF");
-      if (cmd == "on" || switcher) {
-        switcher = false;
+      if (cmd == "on" || buttonCommand) {
+        buttonCommand = false;
         currentState = MOVE;
         break;
       }
-      else {
+      else {        
         currentState = OFF;
         break;
       }
 
     case MOVE:
-      button_check();
-      if (cmd == "off" || switcher) {
-        switcher = false;
+      mySerial.println(z);
+      updateZ();
+      if (cmd == "off" || buttonCommand) {
+        buttonCommand = false;
         currentState = OFF;
         timer = millis();
         break;
       }       
-      mySerial.println("Moving!!!!!");
+      mySerial.println("Moving!!!!!");   
       analogWrite(enA, 200);
-      analogWrite(enB, 200);                                                       
-      if (z > z_init) {
-        mySerial.println("turn left");
-        analogWrite(enA, 180);
-        analogWrite(enB, 130);
-        delay(500);
-        currentState = MOVE;
-        break;
+      analogWrite(enB, 200); 
+                                                         
+      if (z > z_init+5 && z < 45) {
+        updateZ();
+        analogWrite(enA, 160);
+        analogWrite(enB, 190);
       }
-      if (z < z_init) {
-        mySerial.println("turn right");
-        analogWrite(enA, 130);
-        analogWrite(enB, 180);
-        delay(500);
-        currentState = MOVE;
-        break;
+      else if (z > z_init+5 && z > 45){
+        updateZ();
+        analogWrite(enA, 120);
+        analogWrite(enB, 170);        
       }
-      
-      break;
-
-      //      digitalWrite(openLED, motorRun);
-      //
-      // The compare below would be replaced by a test of a limit
-      // switch, or other sensor, in a real application.
-      //      if (accumulatedMillis >= motorTimerPreset) { // Door up
-      //        digitalWrite( openLED, motorStop); // Stop the motor
-      ////        doorState = doorIsUp; // The door is now open
-      break;
-
+      if (z < z_init-5 && z > -45) {
+        updateZ();
+        analogWrite(enA, 190);
+        analogWrite(enB, 160);
+      }
+      else if (z < z_init-5 && z < -45){
+        updateZ();
+        analogWrite(enA, 170);
+        analogWrite(enB, 120);        
+      }
+      break;      
 
     case TURN90:
       Serial.println("door up");
@@ -175,14 +194,8 @@ void loop() {
   }
   // Clears the command
   cmd = "";
-  buttonState = 0;
 }
 
-void button_check(){
-  buttonState = digitalRead(buttonPin);
-  Serial.println(buttonState);
-  if (buttonState == 1) {
-    switcher = true;
-  }
-  delay (100);
+void updateZ(){
+  z = -(mpu.getAngleZ());
 }
