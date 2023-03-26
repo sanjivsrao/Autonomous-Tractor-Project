@@ -6,8 +6,8 @@
 #define accumulatedMillis millis() - timerMillis
 
 //communication pins
-#define rxPin 2
-#define txPin 3
+#define rxPin 8
+#define txPin 9
 
 //push button pin
 #define buttonPin 12
@@ -20,16 +20,16 @@
 #define enB 10
 #define in3 5
 #define in4 4
-//bluetooth serial
-SoftwareSerial mySerial(8, 9);
 
-// Set up a new SoftwareSerial object
+// Set up a new SoftwareSerial object for bluetooth
+SoftwareSerial mySerial(rxPin, txPin);
+
 MPU6050 mpu(Wire);
 
 unsigned long timer = 0;
 
 // states the tractor could be in
-enum {OFF, MOVE, TURN90, TURN180};
+enum {OFF, MOVE, TURN_L, TURN_R, TURN180};
 unsigned char currentState;  // tractor state at any given moment
 
 // states the button can be in
@@ -49,11 +49,12 @@ float z;
 float z_init;
 
 void setup() {
+  // Begins serial communication
   Serial.begin(9600);
-  pinMode(rxPin, INPUT);
-  pinMode(txPin, OUTPUT);
-  //button
+  
+  // Defines button pin as input
   pinMode(buttonPin, INPUT);
+  
   //left motor
   pinMode(enA, OUTPUT);
   pinMode(in1, OUTPUT);
@@ -149,42 +150,79 @@ void loop() {
       analogWrite(enA, 200);
       analogWrite(enB, 200); 
                                                          
-      if (z > z_init+5 && z < 45) {
+      if (z > z_init+5 && z < z_init+45) {
         updateZ();
         analogWrite(enA, 160);
         analogWrite(enB, 190);
       }
-      else if (z > z_init+5 && z > 45){
+      else if (z > z_init+5 && z > z_init+45){
         updateZ();
         analogWrite(enA, 120);
         analogWrite(enB, 170);        
       }
-      if (z < z_init-5 && z > -45) {
+      if (z < z_init-5 && z > z_init-45) {
         updateZ();
         analogWrite(enA, 190);
         analogWrite(enB, 160);
       }
-      else if (z < z_init-5 && z < -45){
+      else if (z < z_init-5 && z < z_init-45){
         updateZ();
         analogWrite(enA, 170);
         analogWrite(enB, 120);        
       }
       break;      
 
-    case TURN90:
-      Serial.println("door up");
-    //      if (digitalRead(switchInput) == LOW) { // switchInput pressed
-    //        timerMillis = millis(); // reset the timer
-    ////        doorState = doorClosing; // Advance to the next state
-    //        break;
-    //      }
-    //      else { // switchInput was not pressed
-    //        break;
-    //      }
+    case TURN_R:
+      // Stop the robot
+      analogWrite(enA, 0);
+      analogWrite(enB, 0);    
+      updateZ();
+      //direction for left motor
+      digitalWrite(in1, LOW);
+      digitalWrite(in2, HIGH);
+      //direction for right motor
+      digitalWrite(in3, HIGH);
+      digitalWrite(in4, LOW);
+      while (z > z_init-90){
+        updateZ();
+        // Equal speeds in opposite directions
+        analogWrite(enA,120);
+        analogWrite(enB,120);
+      }
+      // Resets the motor direction to initial values and establishes a new inital Z
+      reinitialize();
+      // Switches to MOVE state so robot continues along path
+      currentState = MOVE;
+      break;
+
+      
+    case TURN_L:
+            // Stop the robot
+      analogWrite(enA, 0);
+      analogWrite(enB, 0);    
+      updateZ();
+      //direction for left motor
+      digitalWrite(in1, HIGH);
+      digitalWrite(in2, LOW);
+      //direction for right motor
+      digitalWrite(in3, LOW);
+      digitalWrite(in4, HIGH);
+      // Loop breaks once a 90 degree change is registered
+      while (z < z_init+90){
+        updateZ();
+        // Equal speeds in opposite directions
+        analogWrite(enA,120);
+        analogWrite(enB,120);
+      }
+      // Resets the motor direction to initial values and establishes a new inital Z
+      reinitialize();
+      // Switches to MOVE state so robot continues along path
+      currentState = MOVE;
+      break;
 
     case TURN180:
-      Serial.println("door closing");
-
+      break;
+      
     default:
       Serial.println("\n We hit the default");
       if (mySerial.available() > 0) {
@@ -198,4 +236,17 @@ void loop() {
 
 void updateZ(){
   z = -(mpu.getAngleZ());
+}
+
+void reinitialize() {
+  //init direction for left motor
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
+
+  //init direction for right motor
+  digitalWrite(in3, LOW);
+  digitalWrite(in4, HIGH);
+  
+  //gyro reset
+  z_init = mpu.getAngleZ();
 }
