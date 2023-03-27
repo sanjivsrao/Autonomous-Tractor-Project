@@ -2,8 +2,6 @@
 #include <MPU6050_light.h>
 #include "Wire.h"
 
-//test
-#define accumulatedMillis millis() - timerMillis
 
 //communication pins
 #define rxPin 8
@@ -22,7 +20,7 @@
 #define in4 4
 
 // Set up a new SoftwareSerial object for bluetooth
-SoftwareSerial mySerial(rxPin, txPin);
+SoftwareSerial mySerial(8,9);
 
 MPU6050 mpu(Wire);
 
@@ -40,6 +38,7 @@ bool buttonCommand; // boolean conversion from button input
 int buttonRead; // command boolean used for directing tractor FSM logic
 unsigned long debounceDelay = 50;
 unsigned long debounceTime = 0;
+int counter;
 
 
 // bluetooth char
@@ -51,10 +50,10 @@ float z_init;
 void setup() {
   // Begins serial communication
   Serial.begin(9600);
-  
   // Defines button pin as input
   pinMode(buttonPin, INPUT);
-  
+  pinMode(rxPin,INPUT);
+  pinMode(txPin,OUTPUT);
   //left motor
   pinMode(enA, OUTPUT);
   pinMode(in1, OUTPUT);
@@ -82,6 +81,9 @@ void setup() {
   currentState = OFF;
   buttonState = RELEASED;
   buttonCommand = false;
+
+  //random counter
+  counter = 0;
 }
 
 void loop() {
@@ -89,9 +91,11 @@ void loop() {
   float x = mpu.getAngleX();
   float y = mpu.getAngleY();
   float z = -(mpu.getAngleZ());
-  
   if (mySerial.available()) {
     cmd = mySerial.readString();
+    mySerial.print("Command: ");
+    mySerial.println(cmd);
+    
     if (cmd == "off") {
       mySerial.println("Turning off Robot");
     }
@@ -101,6 +105,7 @@ void loop() {
     else {
       mySerial.println("Invalid command");
     }
+    
   }
   
   //debounce button
@@ -126,30 +131,42 @@ void loop() {
     case OFF: // Nothing happening, waiting for switchInput
       analogWrite(enA, 0);
       analogWrite(enB, 0);
-      mySerial.println("OFF");
+      Serial.println("Off");
       if (cmd == "on" || buttonCommand) {
         buttonCommand = false;
         currentState = MOVE;
         break;
       }
-      else {        
-        currentState = OFF;
+      else if (cmd == "left"){
+        currentState = TURN_L;
         break;
       }
+      else if (cmd == "right"){
+        currentState = TURN_R;
+        break;
+      }
+      break;
 
     case MOVE:
-      mySerial.println(z);
       updateZ();
       if (cmd == "off" || buttonCommand) {
         buttonCommand = false;
         currentState = OFF;
         timer = millis();
         break;
-      }       
-      mySerial.println("Moving!!!!!");   
+      }
+      else if (cmd == "left"){
+        currentState = TURN_L;
+        break;
+      }
+      else if (cmd == "right"){
+        currentState = TURN_R;
+        break;
+      }
+      Serial.println("Moving");   
       analogWrite(enA, 200);
       analogWrite(enB, 200); 
-                                                         
+                                                   
       if (z > z_init+5 && z < z_init+45) {
         updateZ();
         analogWrite(enA, 160);
@@ -201,6 +218,7 @@ void loop() {
       analogWrite(enA, 0);
       analogWrite(enB, 0);    
       updateZ();
+      
       //direction for left motor
       digitalWrite(in1, HIGH);
       digitalWrite(in2, LOW);
@@ -222,7 +240,7 @@ void loop() {
 
     case TURN180:
       break;
-      
+    
     default:
       Serial.println("\n We hit the default");
       if (mySerial.available() > 0) {
