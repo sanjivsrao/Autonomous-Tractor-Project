@@ -73,8 +73,10 @@ void setup() {
   Wire.begin();
   mpu.begin();
   mpu.calcGyroOffsets();
+  mpu.setFilterGyroCoef(0.98);
+  mpu.calcOffsets();
   mySerial.begin(9600);
-  z_init = mpu.getAngleZ();
+  z_init = -(mpu.getAngleZ());
 
   //init state
   currentState = OFF;
@@ -110,7 +112,7 @@ void loop() {
     }
     
   }
-  
+  mpu.update();
   //debounce button
   switch (buttonState) {
     case PUSHED:
@@ -128,13 +130,13 @@ void loop() {
       }
       break;
   }
-
+  mpu.update();
 
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
       analogWrite(enA, 0);
       analogWrite(enB, 0);
-      updateZ();
+      mpu.update();
       Serial.println(z);
       if (cmd == "on" || buttonCommand) {
         buttonCommand = false;
@@ -145,10 +147,12 @@ void loop() {
       }
       else if (cmd == "left"){
         currentState = TURN_L;
+        mpu.update();
         break;
       }
       else if (cmd == "right"){
         currentState = TURN_R;
+        mpu.update();
         break;
       }
       break;
@@ -156,20 +160,24 @@ void loop() {
     case MOVE:
       if ((millis()-timer)>3000){
         currentState = OFF;
+        mpu.update();
         break;
       }
       if (cmd == "off" || buttonCommand) {
         buttonCommand = false;
         currentState = OFF;
         timer = millis();
+        mpu.update();
         break;
       }
       else if (cmd == "left"){
         currentState = TURN_L;
+        mpu.update();
         break;
       }
       else if (cmd == "right"){
         currentState = TURN_R;
+        mpu.update();
         break;
       }
       Serial.println("Moving");   
@@ -277,6 +285,7 @@ void loop() {
 }
 
 void updateZ(){
+  mpu.update();
   z = -(mpu.getAngleZ());
 }
 
@@ -290,6 +299,9 @@ void reinitialize() {
   digitalWrite(in4, HIGH);
   
   //gyro reset
+  Wire.begin();
+  mpu.begin();
   mpu.begin();
   mpu.calcGyroOffsets();
+  z_init = -(mpu.getAngleZ());
 }
