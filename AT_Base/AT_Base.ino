@@ -10,6 +10,9 @@
 //push button pin
 #define buttonPin 12
 
+//ultrasonic sensor pin
+#define usPin 2
+
 //left motor pins
 #define enA 11
 #define in1 7
@@ -36,6 +39,7 @@ enum {PUSHED, RELEASED};
 unsigned char buttonState; // button state at any given moment
 bool buttonCommand; // boolean conversion from button input
 int buttonRead; // command boolean used for directing tractor FSM logic
+int usRead;
 unsigned long debounceDelay = 50;
 unsigned long debounceTime = 0;
 
@@ -51,6 +55,10 @@ void setup() {
   Serial.begin(9600);
   // Defines button pin as input
   pinMode(buttonPin, INPUT);
+
+  // Define ultrasonic sensor pin as input
+  pinMode(usPin, INPUT);
+
   pinMode(rxPin,INPUT);
   pinMode(txPin,OUTPUT);
   //left motor
@@ -76,7 +84,7 @@ void setup() {
   mpu.setFilterGyroCoef(0.98);
   mpu.calcOffsets();
   mySerial.begin(9600);
-  z_init = -(mpu.getAngleZ());
+  z_init = mpu.getAngleZ();
 
   //init state
   currentState = OFF;
@@ -131,13 +139,14 @@ void loop() {
       break;
   }
   mpu.update();
-
+    
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
+      usRead = digitalRead(usPin);
+      Serial.println("Off");
       analogWrite(enA, 0);
       analogWrite(enB, 0);
       mpu.update();
-      Serial.println(z);
       if (cmd == "on" || buttonCommand) {
         buttonCommand = false;
         timer = millis();
@@ -158,11 +167,12 @@ void loop() {
       break;
 
     case MOVE:
-      if ((millis()-timer)>3000){
-        currentState = OFF;
-        mpu.update();
-        break;
-      }
+      // if ((millis()-timer)>3000){
+      //   currentState = OFF;
+      //   mpu.update();
+      //   break;
+      // }
+      Serial.println("On");
       if (cmd == "off" || buttonCommand) {
         buttonCommand = false;
         currentState = OFF;
@@ -180,7 +190,13 @@ void loop() {
         mpu.update();
         break;
       }
-      Serial.println("Moving");   
+      usRead = digitalRead(usPin);
+      Serial.println(usRead);
+      if (usRead){
+        currentState = OFF;
+        mpu.update();
+        break;
+      }   
       analogWrite(enA, 120);
       analogWrite(enB, 120); 
                                                    
@@ -225,15 +241,11 @@ void loop() {
         analogWrite(enB,0);
       }
       if (z < z_init+92 && z > z_init+88){
-        updateZ();
         analogWrite(enA,0);
         analogWrite(enB,0);
-        digitalWrite(in1, LOW);
-        digitalWrite(in2, HIGH);
-        digitalWrite(in3, LOW);
-        digitalWrite(in4, HIGH);
-        reinitialize();
         currentState = OFF;
+        z_init = z_init-90;
+        reinitialize();
         break;
       }
       
@@ -257,14 +269,17 @@ void loop() {
         mySerial.println(z);
         // Equal speeds in opposite directions
         analogWrite(enA,0);
-        analogWrite(enB,80);
+        analogWrite(enB,75);
+        delay (500);
+        analogWrite(enB,0);
       }
-      if (z > z_init-90 && z < z_init-75){
+      if (z > z_init-95 && z < z_init-85){
         analogWrite(enA,0);
         analogWrite(enB,0);
         currentState = OFF;
         z_init = z_init-90;
         reinitialize();
+        
         break;
       }
       // Resets the motor direction to initial values and establishes a new inital Z
@@ -303,5 +318,5 @@ void reinitialize() {
   mpu.begin();
   mpu.begin();
   mpu.calcGyroOffsets();
-  z_init = -(mpu.getAngleZ());
+  z_init = mpu.getAngleZ();
 }
