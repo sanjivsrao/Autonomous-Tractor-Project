@@ -221,8 +221,8 @@ void loop() {
         mySerial.print("z: ");
         mySerial.println(z);
         // Equal speeds in opposite directions
-        analogWrite(enA,60);
-        analogWrite(enB,60);
+        analogWrite(enA,80);
+        analogWrite(enB,0);
       }
       if (z < z_init+92 && z > z_init+88){
         updateZ();
