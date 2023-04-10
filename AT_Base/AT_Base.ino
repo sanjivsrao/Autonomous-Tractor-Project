@@ -199,3 +199,21 @@ void loop() {
 void updateZ(){
   z = -(mpu.getAngleZ());
 }
+
+void obstacleCheck() {
+  // clear trigpin
+  digitalWrite(tPin, LOW);
+  delayMicroseconds(2);
+  // set trigpin to high for 15 microseconds
+  digitalWrite(tPin, HIGH);
+  delayMicroseconds(15);
+  digitalWrite(tPin, LOW);
+  // reads echo pin and returns microseconds of the sound wave travel time
+  duration = pulseIn(ePin, HIGH);
+  // Calculating the distance
+  dist = duration * 0.034 / 2;
+  while (dist < 15) {
+    analogWrite(enA, 0);
+    analogWrite(enB, 0);
+  }
+}

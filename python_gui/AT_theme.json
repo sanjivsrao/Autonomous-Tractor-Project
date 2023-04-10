@@ -1,0 +1,46 @@
+{
+    "button":
+    {
+        "colours":
+        {
+            "normal_bg": "#393E46",
+            "hovered_border": "#00ADB5",
+            "normal_text": "#00ADB5",
+            "selected_text": "EEEEEE"
+        },
+        "misc":
+        {
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "10",
+            "border_width": "2",
+            "shadow_width": "2"
+        }
+    },
+    "status_bar":
+    {
+        "colours":
+        {
+            "normal_border": "#3030AA50,#3030AAAA,60"
+        },
+        "misc":
+        {
+            "shape": "rounded_rectangle",
+            "shape_corner_radius": "2",
+            "border_width": "5",
+            "shadow_width": "2"
+        }
+    },
+    "textbox":
+    {
+        "colours":
+        {
+            "normal_bg": "#393E46",
+            "normal_text": "#00ADB5",
+            "selected_text": "EEEEEE"
+        },
+        "misc":
+        {
+        }
+    }
+    
+}
