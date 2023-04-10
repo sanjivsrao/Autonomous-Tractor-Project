@@ -239,12 +239,14 @@ void loop() {
         // Equal speeds in opposite directions
         analogWrite(enA,80);
         analogWrite(enB,0);
+        delay (500);
+        analogWrite(enA,0);
       }
-      if (z < z_init+92 && z > z_init+88){
+      if (z < z_init+95 && z > z_init+85){
         analogWrite(enA,0);
         analogWrite(enB,0);
         currentState = OFF;
-        z_init = z_init-90;
+        z_init = z_init+90;
         reinitialize();
         break;
       }
@@ -318,5 +320,6 @@ void reinitialize() {
   mpu.begin();
   mpu.begin();
   mpu.calcGyroOffsets();
+  mpu.update();
   z_init = mpu.getAngleZ();
 }
