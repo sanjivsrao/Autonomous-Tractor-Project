@@ -76,15 +76,11 @@ void setup() {
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
 
+  //Serial setup
+  mySerial.begin(9600);
   
   //gyro setup
-  Wire.begin();
-  mpu.begin();
-  mpu.calcGyroOffsets();
-  mpu.setFilterGyroCoef(0.98);
-  mpu.calcOffsets();
-  mySerial.begin(9600);
-  z_init = mpu.getAngleZ();
+  gyroSetup();
 
   //init state
   currentState = OFF;
@@ -94,10 +90,13 @@ void setup() {
 }
 
 void loop() {
+   if(millis() - timer > 2000){ // print data every 2 seconds to bluetooth module
+    mySerial.print("\tZ: ");mySerial.println(mpu.getGyroZ());
+    mySerial.print("\tZ: ");mySerial.println(mpu.getAngleZ());
+    mySerial.println(F("====================\n"));
+    timer = millis();
+  }
   mpu.update();
-  float x = mpu.getAngleX();
-  float y = mpu.getAngleY();
-  float z = -(mpu.getAngleZ());
   if (mySerial.available()) {
     cmd = mySerial.readString();
     mySerial.print("Command: ");
@@ -138,7 +137,6 @@ void loop() {
       }
       break;
   }
-  mpu.update();
     
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
@@ -237,16 +235,15 @@ void loop() {
         mySerial.print("z: ");
         mySerial.println(z);
         // Equal speeds in opposite directions
-        analogWrite(enA,80);
+        analogWrite(enA,75);
         analogWrite(enB,0);
-        delay (500);
+        delay (250);
         analogWrite(enA,0);
       }
       if (z < z_init+95 && z > z_init+85){
         analogWrite(enA,0);
         analogWrite(enB,0);
         currentState = OFF;
-        z_init = z_init+90;
         reinitialize();
         break;
       }
@@ -272,14 +269,13 @@ void loop() {
         // Equal speeds in opposite directions
         analogWrite(enA,0);
         analogWrite(enB,75);
-        delay (500);
+        delay (250);
         analogWrite(enB,0);
       }
       if (z > z_init-95 && z < z_init-85){
         analogWrite(enA,0);
         analogWrite(enB,0);
         currentState = OFF;
-        z_init = z_init-90;
         reinitialize();
         
         break;
@@ -306,6 +302,18 @@ void updateZ(){
   z = -(mpu.getAngleZ());
 }
 
+void gyroSetup(){
+  Wire.begin();
+  byte status = mpu.begin(1,0);
+  while(status!=0){}
+  mySerial.println(F("Calculating offsets, do not move robot"));
+  delay(1000);
+  mpu.calcOffsets(true,true); // gyro and accelero
+  mpu.setFilterGyroCoef(0.98);
+  mySerial.println("Done!\n");
+  z_init = mpu.getAngleZ();
+}
+
 void reinitialize() {
   //init direction for left motor
   digitalWrite(in1, LOW);
@@ -316,10 +324,5 @@ void reinitialize() {
   digitalWrite(in4, HIGH);
   
   //gyro reset
-  Wire.begin();
-  mpu.begin();
-  mpu.begin();
-  mpu.calcGyroOffsets();
-  mpu.update();
-  z_init = mpu.getAngleZ();
+  gyroSetup();
 }
