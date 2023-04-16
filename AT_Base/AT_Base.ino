@@ -90,17 +90,18 @@ void setup() {
 }
 
 void loop() {
-   if(millis() - timer > 2000){ // print data every 2 seconds to bluetooth module
+   /*if(millis() - timer > 2000){ // print data every 2 seconds to bluetooth module
     mySerial.print("\tZ: ");mySerial.println(mpu.getGyroZ());
     mySerial.print("\tZ: ");mySerial.println(mpu.getAngleZ());
-    mySerial.println(F("====================\n"));
+    mySerial.println(F("===================="));
     timer = millis();
-  }
+  }*/
   mpu.update();
   if (mySerial.available()) {
     cmd = mySerial.readString();
     Serial.print("Command: ");
     Serial.println(cmd);
+    mySerial.write(15);
     
     if (cmd == "off") {
       Serial.println("Turning off Robot");
@@ -306,11 +307,11 @@ void gyroSetup(){
   Wire.begin();
   byte status = mpu.begin(1,0);
   while(status!=0){}
-  mySerial.println(F("Calculating offsets, do not move robot"));
+  Serial.println(F("Calculating offsets, do not move robot"));
   delay(1000);
   mpu.calcOffsets(true,true); // gyro and accelero
   mpu.setFilterGyroCoef(0.98);
-  mySerial.println("Done!\n");
+  Serial.println("Done!\n");
   z_init = mpu.getAngleZ();
 }
 
