@@ -99,23 +99,23 @@ void loop() {
   mpu.update();
   if (mySerial.available()) {
     cmd = mySerial.readString();
-    mySerial.print("Command: ");
-    mySerial.println(cmd);
+    Serial.print("Command: ");
+    Serial.println(cmd);
     
     if (cmd == "off") {
-      mySerial.println("Turning off Robot");
+      Serial.println("Turning off Robot");
     }
     else if (cmd == "on") {
-      mySerial.println("Turning on Robot");
+      Serial.println("Turning on Robot");
     }
     else if (cmd == "left") {
-      mySerial.println("Turning left");
+      Serial.println("Turning left");
     }
     else if (cmd == "right") {
-      mySerial.println("Turning right");
+      Serial.println("Turning right");
     }
     else {
-      mySerial.println("Invalid command");
+      Serial.println("Invalid command");
     }
     
   }
@@ -141,7 +141,7 @@ void loop() {
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
       usRead = digitalRead(usPin);
-      Serial.println("Off");
+      //Serial.println("Off");
       analogWrite(enA, 0);
       analogWrite(enB, 0);
       mpu.update();
@@ -170,7 +170,7 @@ void loop() {
       //   mpu.update();
       //   break;
       // }
-      Serial.println("On");
+      //Serial.println("On");
       if (cmd == "off" || buttonCommand) {
         buttonCommand = false;
         currentState = OFF;

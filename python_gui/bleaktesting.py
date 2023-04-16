@@ -1,12 +1,15 @@
 import asyncio
 from bleak import BleakClient
 
-address = "24:71:89:cc:09:05"
-MODEL_NBR_UUID = "00002a24-0000-1000-8000-00805f9b34fb"
+
+address = "94:A9:A8:3B:14:2F"
+c_UUID = "0000FFE1-0000-1000-8000-00805F9B34FB"
+s_UIUD = "0000FFE0-0000-1000-8000-00805F9B34FB"
 
 async def main(address):
     async with BleakClient(address) as client:
-        model_number = await client.read_gatt_char(MODEL_NBR_UUID)
-        print("Model Number: {0}".format("".join(map(chr, model_number))))
+        await client.write_gatt_char(c_UUID, bytearray('off', 'utf8'))
+        #model_number = await client.write_gatt_char(c_UUID)
+        #print("Model Number: {0}".format("".join(map(chr, model_number))))
 
 asyncio.run(main(address))
