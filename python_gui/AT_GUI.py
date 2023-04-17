@@ -5,13 +5,18 @@ from bleak import BleakClient
 from button import Button
 
 pygame.init()
+avgSpeed = 0
+totalSpeed = 0
+blacklines = 0
+speedI = 0
+
 
 SCREEN = pygame.display.set_mode((1280, 720))
 pygame.display.set_caption("Autonomous Tractor Controller")
 
 address = "94:a9:a8:3b:14:2f"
-MODEL_NBR_UUID = "D8773AC5-48E4-1CA0-E332-0723C91631DE"
-
+c_UUID = "0000FFE1-0000-1000-8000-00805F9B34FB"
+s_UIUD = "0000FFE0-0000-1000-8000-00805F9B34FB"
 BG = pygame.image.load("assets/Background.png")
 
 
@@ -24,26 +29,41 @@ def notification_handler(sender, data):
 def get_font(size): # Returns Press-Start-2P in the desired size
     return pygame.font.Font("assets/font.ttf", size)
 
-async def start(address):
-    async with BleakClient(address) as client:
-            model_number = await client.read_gatt_char(MODEL_NBR_UUID)
-            await client.start_notify(MODEL_NBR_UUID, notification_handler)
-            print("Writing command")
-            await client.write_gatt_descriptor(0x5, bytearray('on\r', 'utf8'))
-            print("robot shouldve started")
+def start():
+    startBot(address)
+    speed = 0
     while True:
         
         PLAY_MOUSE_POS = pygame.mouse.get_pos()
 
         SCREEN.fill("black")
-
-        PLAY_TEXT = get_font(25).render("Robot has been started.", True, "White")
-        PLAY_RECT = PLAY_TEXT.get_rect(center=(640, 100))
-        SCREEN.blit(PLAY_TEXT, PLAY_RECT)
+        data_text= get_font(25).render("Real-Time Data", True, "Orange")
+        data_rect = data_text.get_rect(center=(300, 100))
+        SCREEN.blit(data_text, data_rect)
+        #gets values 
+        batteryhealth = updateBattery(address)
+        accel = updateAccel(address)
+        speed = speed + .001 * accel
+        totalSpeed = totalSpeed + speed
+        speedI = speedI + 1
+        blackLines = updateBlackLines(address)
+        direction = updateDirection(address)
+        #displays data
+        battery_text= get_font(25).render("Battery Health: " + str(batteryhealth) + "%", True, "White")
+        battery_rect = data_text.get_rect(center=(300, 150))
+        SCREEN.blit(battery_text, battery_rect)
+        speed_text = get_font(25).render("Speed: " + str(speed) + "cm/s", True, "White")
+        speed_rect = data_text.get_rect(center=(300, 200))
+        SCREEN.blit(speed_text, speed_rect)
+        blackLines_text = get_font(25).render("Black Lines: " + str(blackLines), True, "White")
+        blackLines_rect = data_text.get_rect(center=(300, 250))
+        SCREEN.blit(blackLines_text, blackLines_rect)
+        direction_text = get_font(25).render("Direction: " + str(direction), True, "White")
+        direction_rect = data_text.get_rect(center=(300, 300))
+        SCREEN.blit(direction_text, direction_rect)
 
         STOP = Button(image=None, pos=(840, 460), 
                             text_input="STOP", font=get_font(75), base_color="White", hovering_color="Green")
-        batteryhealth = 60
         STOP.changeColor(PLAY_MOUSE_POS)
         STOP.update(SCREEN)
 
@@ -53,19 +73,27 @@ async def start(address):
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if STOP.checkForInput(PLAY_MOUSE_POS):
-                    menu()
-
+                    trip()
         pygame.display.update()
     
-def options():
+def trip():
     while True:
         OPTIONS_MOUSE_POS = pygame.mouse.get_pos()
 
-        SCREEN.fill("white")
+        SCREEN.fill("black")
 
-        OPTIONS_TEXT = get_font(45).render("This is the OPTIONS screen.", True, "Black")
-        OPTIONS_RECT = OPTIONS_TEXT.get_rect(center=(640, 260))
+        OPTIONS_TEXT = get_font(45).render("Trip Info:", True,"White")
+        OPTIONS_RECT = OPTIONS_TEXT.get_rect(center=(640, 50))
         SCREEN.blit(OPTIONS_TEXT, OPTIONS_RECT)
+
+        #display overall data
+        avgSpeed = totalSpeed / speedI
+        avgSpeed_text = get_font(25).render("Average Speed: " + str(avgSpeed) + "cm/s", True, "White")
+        avgSpeed_rect = avgSpeed_text.get_rect(center=(640, 150))
+        SCREEN.blit(avgSpeed_text, avgSpeed_rect)
+        totalBlackLines_text = get_font(25).render("Total Black Lines: " + str(blacklines), True, "White")
+        totalBlackLines_rect = totalBlackLines_text.get_rect(center=(640, 200))
+        SCREEN.blit(totalBlackLines_text, totalBlackLines_rect)
 
         OPTIONS_BACK = Button(image=None, pos=(640, 460), 
                             text_input="BACK", font=get_font(75), base_color="Black", hovering_color="Green")
@@ -120,5 +148,33 @@ def menu():
                     sys.exit()
 
         pygame.display.update()
-
+async def startBot(address):
+    # async with BleakClient(address) as client:
+    #         await client.write_gatt_char(c_UUID, bytearray('on\r', 'utf8'))
+    #         print("robot shouldve started")
+    print("starting!!!!")
+async def updateBattery(address):
+    async with BleakClient(address) as client:
+        await client.start_notify(s_UIUD, notification_handler)
+        await asyncio.sleep(1.0)
+        await client.stop_notify(s_UIUD)
+        return 50
+def updateAccel(address):
+#     async with BleakClient(address) as client:
+#         await client.start_notify(s_UIUD, notification_handler)
+#         await asyncio.sleep(1.0)
+#         await client.stop_notify(s_UIUD)
+    return 509
+async def updateBlackLines(address):
+    async with BleakClient(address) as client:
+        await client.start_notify(s_UIUD, notification_handler)
+        await asyncio.sleep(1.0)
+        await client.stop_notify(s_UIUD)
+        return 50
+async def updateDirection(address):
+    async with BleakClient(address) as client:
+        await client.start_notify(s_UIUD, notification_handler)
+        await asyncio.sleep(1.0)
+        await client.stop_notify(s_UIUD)
+        return 50
 menu()
