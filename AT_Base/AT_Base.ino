@@ -25,6 +25,7 @@
 // Set up a new SoftwareSerial object for bluetooth
 SoftwareSerial mySerial(8,9);
 
+
 MPU6050 mpu(Wire);
 
 unsigned long timer = 0;
@@ -43,6 +44,7 @@ int usRead;
 unsigned long debounceDelay = 50;
 unsigned long debounceTime = 0;
 
+float elapsedTime = millis()/1000;
 
 // bluetooth char
 String cmd;
@@ -52,6 +54,7 @@ float z_init;
 
 void setup() {
   // Begins serial communication
+
   Serial.begin(9600);
   // Defines button pin as input
   pinMode(buttonPin, INPUT);
@@ -65,13 +68,15 @@ void setup() {
   pinMode(enA, OUTPUT);
   pinMode(in1, OUTPUT);
   pinMode(in2, OUTPUT);
-  //init direction for left motor
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, HIGH);
+
   //right motor
   pinMode(enB, OUTPUT);
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
+
+  //init direction for left motor
+  digitalWrite(in1, LOW);
+  digitalWrite(in2, HIGH);
   //init direction for right motor
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
@@ -96,12 +101,18 @@ void loop() {
     mySerial.println(F("===================="));
     timer = millis();
   }*/
+  elapsedTime = millis()/1000;
   mpu.update();
+  //mySerial.print(static_cast<int>(mpu.getAccY()));
+  if(millis() - timer > 100){ // print data every 2 seconds to bluetooth module
+    mySerial.println(mpu.getAccY());
+    mySerial.println(elapsedTime);
+    timer = millis();
+  }
   if (mySerial.available()) {
     cmd = mySerial.readString();
     Serial.print("Command: ");
-    Serial.println(cmd);
-    mySerial.write(15);
+
     
     if (cmd == "off") {
       Serial.println("Turning off Robot");
@@ -171,7 +182,7 @@ void loop() {
       //   mpu.update();
       //   break;
       // }
-      //Serial.println("On");
+      Serial.println("On");
       if (cmd == "off" || buttonCommand) {
         buttonCommand = false;
         currentState = OFF;
@@ -190,7 +201,6 @@ void loop() {
         break;
       }
       usRead = digitalRead(usPin);
-      Serial.println(usRead);
       if (usRead){
         currentState = OFF;
         mpu.update();
