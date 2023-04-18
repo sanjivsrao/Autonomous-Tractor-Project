@@ -13,6 +13,9 @@
 //ultrasonic sensor pin
 #define usPin 2
 
+//IR pin
+#define irPin A0
+
 //left motor pins
 #define enA 11
 #define in1 7
@@ -21,6 +24,9 @@
 #define enB 10
 #define in3 5
 #define in4 4
+
+#define SpeedL 100
+#define SpeedR 97
 
 // Set up a new SoftwareSerial object for bluetooth
 SoftwareSerial mySerial(8,9);
@@ -41,6 +47,7 @@ unsigned char buttonState; // button state at any given moment
 bool buttonCommand; // boolean conversion from button input
 int buttonRead; // command boolean used for directing tractor FSM logic
 int usRead;
+int irRead;
 unsigned long debounceDelay = 50;
 unsigned long debounceTime = 0;
 
@@ -102,13 +109,8 @@ void loop() {
     timer = millis();
   }*/
   elapsedTime = millis()/1000;
-  mpu.update();
+  updateZ();
   //mySerial.print(static_cast<int>(mpu.getAccY()));
-  if(millis() - timer > 100){ // print data every 2 seconds to bluetooth module
-    mySerial.println(mpu.getAccY());
-    mySerial.println(elapsedTime);
-    timer = millis();
-  }
   if (mySerial.available()) {
     cmd = mySerial.readString();
     Serial.print("Command: ");
@@ -131,7 +133,7 @@ void loop() {
     }
     
   }
-  mpu.update();
+  updateZ();
   //debounce button
   switch (buttonState) {
     case PUSHED:
@@ -153,30 +155,34 @@ void loop() {
   switch (currentState) {
     case OFF: // Nothing happening, waiting for switchInput
       usRead = digitalRead(usPin);
-      //Serial.println("Off");
+      Serial.println("Off");
       analogWrite(enA, 0);
       analogWrite(enB, 0);
-      mpu.update();
+      updateZ();
       if (cmd == "on" || buttonCommand) {
         buttonCommand = false;
         timer = millis();
         currentState = MOVE;
-
         break;
       }
       else if (cmd == "left"){
         currentState = TURN_L;
-        mpu.update();
+        updateZ();
         break;
       }
       else if (cmd == "right"){
         currentState = TURN_R;
-        mpu.update();
+        updateZ();
         break;
       }
       break;
 
     case MOVE:
+      updateZ();
+      mySerial.print("z_init: ");
+      mySerial.println(z_init);
+      mySerial.print("z: ");
+      mySerial.println(z);
       // if ((millis()-timer)>3000){
       //   currentState = OFF;
       //   mpu.update();
@@ -187,47 +193,47 @@ void loop() {
         buttonCommand = false;
         currentState = OFF;
         timer = millis();
-        mpu.update();
+        updateZ();
         break;
       }
       else if (cmd == "left"){
         currentState = TURN_L;
-        mpu.update();
+        updateZ();
         break;
       }
       else if (cmd == "right"){
         currentState = TURN_R;
-        mpu.update();
+        updateZ();
         break;
       }
       usRead = digitalRead(usPin);
-      if (usRead){
+      irRead = analogRead(irPin);
+      //Serial.println(irRead);
+      // if ((irRead < 400)){
+      //   currentState = OFF;
+      //   mpu.update();
+      //   break;
+      // }
+      if ((usRead == 1)){
         currentState = OFF;
-        mpu.update();
+        updateZ();
         break;
-      }   
-      analogWrite(enA, 120);
-      analogWrite(enB, 120); 
-                                                   
-      if (z > z_init+5 && z < z_init+45) {
+      }      
+      analogWrite(enA, SpeedL);
+      analogWrite(enB, SpeedR); 
+      Serial.println(z);
+      Serial.println(z_init);                           
+      if (z > z_init+5) {
+        Serial.println("Correcting to right");
         updateZ();
-        analogWrite(enA, 110);//110
-        analogWrite(enB, 140);//140
+        analogWrite(enA, SpeedL);//110
+        analogWrite(enB, SpeedR/2);//140
       }
-      else if (z > z_init+5 && z > z_init+45){
+      if (z < z_init-5) {
+        Serial.println("Correcting to left");
         updateZ();
-        analogWrite(enA, 70);//70
-        analogWrite(enB, 120);//120    
-      }
-      if (z < z_init-5 && z > z_init-45) {
-        updateZ();
-        analogWrite(enA, 140);
-        analogWrite(enB, 110);
-      }
-      else if (z < z_init-5 && z < z_init-45){
-        updateZ();
-        analogWrite(enA, 120);
-        analogWrite(enB, 70);        
+        analogWrite(enA, SpeedL/2);
+        analogWrite(enB, SpeedR);
       }
       break;      
 
@@ -241,12 +247,8 @@ void loop() {
       digitalWrite(in4, LOW);
       if (z < z_init+90){
         updateZ();
-        mySerial.print("z_init: ");
-        mySerial.println(z_init);
-        mySerial.print("z: ");
-        mySerial.println(z);
         // Equal speeds in opposite directions
-        analogWrite(enA,75);
+        analogWrite(enA,SpeedL-40);
         analogWrite(enB,0);
         delay (250);
         analogWrite(enA,0);
@@ -273,13 +275,9 @@ void loop() {
       digitalWrite(in3, LOW);
       digitalWrite(in4, HIGH);
       if (z > z_init-90){
-        mySerial.print("z_init: ");
-        mySerial.println(z_init);
-        mySerial.print("z: ");
-        mySerial.println(z);
         // Equal speeds in opposite directions
         analogWrite(enA,0);
-        analogWrite(enB,75);
+        analogWrite(enB,SpeedR-40);
         delay (250);
         analogWrite(enB,0);
       }
@@ -310,14 +308,13 @@ void loop() {
 
 void updateZ(){
   mpu.update();
-  z = -(mpu.getAngleZ());
+  z = (mpu.getAngleZ());
 }
 
 void gyroSetup(){
   Wire.begin();
-  byte status = mpu.begin(1,0);
-  while(status!=0){}
-  Serial.println(F("Calculating offsets, do not move robot"));
+  mpu.begin();
+  Serial.println(("Calculating offsets, do not move robot"));
   delay(1000);
   mpu.calcOffsets(true,true); // gyro and accelero
   mpu.setFilterGyroCoef(0.98);
@@ -335,5 +332,6 @@ void reinitialize() {
   digitalWrite(in4, HIGH);
   
   //gyro reset
-  gyroSetup();
+  z_init = mpu.getAngleZ();
 }
+
