@@ -48,6 +48,7 @@ bool buttonCommand; // boolean conversion from button input
 int buttonRead; // command boolean used for directing tractor FSM logic
 int usRead;
 int irRead;
+int numTapes;
 unsigned long debounceDelay = 50;
 unsigned long debounceTime = 0;
 
@@ -68,7 +69,7 @@ void setup() {
 
   // Define ultrasonic sensor pin as input
   pinMode(usPin, INPUT);
-
+  pinMode(irPin, INPUT);
   pinMode(rxPin,INPUT);
   pinMode(txPin,OUTPUT);
   //left motor
@@ -179,10 +180,6 @@ void loop() {
 
     case MOVE:
       updateZ();
-      mySerial.print("z_init: ");
-      mySerial.println(z_init);
-      mySerial.print("z: ");
-      mySerial.println(z);
       // if ((millis()-timer)>3000){
       //   currentState = OFF;
       //   mpu.update();
@@ -208,12 +205,29 @@ void loop() {
       }
       usRead = digitalRead(usPin);
       irRead = analogRead(irPin);
-      //Serial.println(irRead);
-      // if ((irRead < 400)){
-      //   currentState = OFF;
-      //   mpu.update();
-      //   break;
-      // }
+      if ((irRead < 400)){
+        numTapes++;
+        if (numTapes<=2){
+          //turn left
+          currentState = TURN_L;
+          mySerial.println("LEFT");
+          break;
+        }
+        else if (numTapes>=3 && numTapes<=4){
+          //turn right
+          currentState = TURN_R;
+          mySerial.println("RIGHT");
+          break;
+        }
+        else{
+          //turn left 
+          currentState = TURN_L;     
+          mySerial.println("LEFT"); 
+          break;   
+        }
+        mpu.update();
+        break;
+      }
       if ((usRead == 1)){
         currentState = OFF;
         updateZ();
@@ -239,56 +253,55 @@ void loop() {
 
     case TURN_R:  
       updateZ();
-      //direction for left motor
-      digitalWrite(in1, LOW);
-      digitalWrite(in2, HIGH);
-      //direction for right motor
-      digitalWrite(in3, HIGH);
-      digitalWrite(in4, LOW);
-      if (z < z_init+90){
-        updateZ();
-        // Equal speeds in opposite directions
-        analogWrite(enA,SpeedL-40);
-        analogWrite(enB,0);
-        delay (250);
-        analogWrite(enA,0);
+      while (z > z_init-80 )
+      {
+        analogWrite(enA, SpeedL - 20);
+        analogWrite(enB, 0);
+        updateZ();        
       }
-      if (z < z_init+95 && z > z_init+85){
-        analogWrite(enA,0);
-        analogWrite(enB,0);
-        currentState = OFF;
-        reinitialize();
-        break;
-      }
-      
+      while (z < z_init-82 )
+      {
+        analogWrite(enA, 0);
+        analogWrite(enB, SpeedR - 20);
+        updateZ();        
+      }  
+      reinitialize();
+      currentState = MOVE;            
+          
       // Resets the motor direction to initial values and establishes a new inital Z
       // Switches to MOVE state so robot continues along path
       break;
 
       
     case TURN_L: 
-      updateZ();
-      //direction for left motor
-      digitalWrite(in1, HIGH);
-      digitalWrite(in2, LOW);
-      //direction for right motor
-      digitalWrite(in3, LOW);
-      digitalWrite(in4, HIGH);
-      if (z > z_init-90){
-        // Equal speeds in opposite directions
-        analogWrite(enA,0);
-        analogWrite(enB,SpeedR-40);
-        delay (250);
-        analogWrite(enB,0);
+    updateZ();
+      while (z < z_init+80 )
+      {
+        analogWrite(enA, 0);
+        analogWrite(enB, SpeedR - 20);
+        updateZ();        
       }
-      if (z > z_init-95 && z < z_init-85){
-        analogWrite(enA,0);
-        analogWrite(enB,0);
-        currentState = OFF;
-        reinitialize();
-        
-        break;
-      }
+      while (z > z_init+82 )
+      {
+        analogWrite(enA, SpeedL - 20);
+        analogWrite(enB, 0);
+        updateZ();        
+      }  
+      // delay(500);
+      // if (z > z_init+90) {
+      //   Serial.println("Correcting to right");
+      //   updateZ();
+      //   analogWrite(enA, SpeedL);//110
+      //   analogWrite(enB, SpeedR/2);//140
+      //   delay(500);
+      // }
+      // analogWrite(enA,0);
+      // analogWrite(enB,0);
+      reinitialize();
+      // analogWrite(enA, SpeedL);
+      // analogWrite(enB, SpeedR);   
+      // delay(1000);
+      currentState = MOVE;
       // Resets the motor direction to initial values and establishes a new inital Z
       // Switches to MOVE state so robot continues along path
       break;
@@ -322,15 +335,7 @@ void gyroSetup(){
   z_init = mpu.getAngleZ();
 }
 
-void reinitialize() {
-  //init direction for left motor
-  digitalWrite(in1, LOW);
-  digitalWrite(in2, HIGH);
-
-  //init direction for right motor
-  digitalWrite(in3, LOW);
-  digitalWrite(in4, HIGH);
-  
+void reinitialize() {  
   //gyro reset
   z_init = mpu.getAngleZ();
 }
