@@ -25,8 +25,8 @@
 #define in3 5
 #define in4 4
 
-#define SpeedL 100
-#define SpeedR 97
+#define SpeedL 100-9
+#define SpeedR 97-10
 
 // Set up a new SoftwareSerial object for bluetooth
 SoftwareSerial mySerial(8,9);
@@ -48,7 +48,7 @@ bool buttonCommand; // boolean conversion from button input
 int buttonRead; // command boolean used for directing tractor FSM logic
 int usRead;
 int irRead;
-int numTapes;
+int numTapes = 0;
 unsigned long debounceDelay = 50;
 unsigned long debounceTime = 0;
 
@@ -119,6 +119,8 @@ void loop() {
     
     if (cmd == "off") {
       Serial.println("Turning off Robot");
+      mySerial.print(numTapes);
+      //mySerial.print(distTraveled);
     }
     else if (cmd == "on") {
       Serial.println("Turning on Robot");
@@ -189,6 +191,7 @@ void loop() {
       if (cmd == "off" || buttonCommand) {
         buttonCommand = false;
         currentState = OFF;
+        mySerial.print(numTapes);
         timer = millis();
         updateZ();
         break;
@@ -205,7 +208,8 @@ void loop() {
       }
       usRead = digitalRead(usPin);
       irRead = analogRead(irPin);
-      if ((irRead < 400)){
+      Serial.println(irRead);
+      if ((irRead < 700)){
         numTapes++;
         if (numTapes<=2){
           //turn left
@@ -233,74 +237,53 @@ void loop() {
         updateZ();
         break;
       }      
-      analogWrite(enA, SpeedL);
-      analogWrite(enB, SpeedR); 
-      Serial.println(z);
-      Serial.println(z_init);                           
+      updateZ();
+
       if (z > z_init+5) {
         Serial.println("Correcting to right");
         updateZ();
+        Serial.println(z);
         analogWrite(enA, SpeedL);//110
-        analogWrite(enB, SpeedR/2);//140
+        analogWrite(enB, 0);//140
+        break;
       }
       if (z < z_init-5) {
         Serial.println("Correcting to left");
         updateZ();
-        analogWrite(enA, SpeedL/2);
+        Serial.println(z);
+        analogWrite(enA, 0);
         analogWrite(enB, SpeedR);
+        break;
       }
+      analogWrite(enA, SpeedL);
+      analogWrite(enB, SpeedR);                
+      updateZ();
       break;      
 
     case TURN_R:  
       updateZ();
-      while (z > z_init-80 )
+      while (z > z_init-90 )
       {
-        analogWrite(enA, SpeedL - 20);
+        analogWrite(enA, SpeedL - 35);
         analogWrite(enB, 0);
-        updateZ();        
-      }
-      while (z < z_init-82 )
-      {
-        analogWrite(enA, 0);
-        analogWrite(enB, SpeedR - 20);
-        updateZ();        
-      }  
+        updateZ();
+      } 
       reinitialize();
-      currentState = MOVE;            
-          
+      currentState = MOVE;
       // Resets the motor direction to initial values and establishes a new inital Z
       // Switches to MOVE state so robot continues along path
       break;
 
       
     case TURN_L: 
-    updateZ();
-      while (z < z_init+80 )
+      updateZ();
+      while (z < z_init+90 )
       {
         analogWrite(enA, 0);
-        analogWrite(enB, SpeedR - 20);
-        updateZ();        
-      }
-      while (z > z_init+82 )
-      {
-        analogWrite(enA, SpeedL - 20);
-        analogWrite(enB, 0);
-        updateZ();        
-      }  
-      // delay(500);
-      // if (z > z_init+90) {
-      //   Serial.println("Correcting to right");
-      //   updateZ();
-      //   analogWrite(enA, SpeedL);//110
-      //   analogWrite(enB, SpeedR/2);//140
-      //   delay(500);
-      // }
-      // analogWrite(enA,0);
-      // analogWrite(enB,0);
+        analogWrite(enB, SpeedR - 35);
+        updateZ();
+      } 
       reinitialize();
-      // analogWrite(enA, SpeedL);
-      // analogWrite(enB, SpeedR);   
-      // delay(1000);
       currentState = MOVE;
       // Resets the motor direction to initial values and establishes a new inital Z
       // Switches to MOVE state so robot continues along path
@@ -339,4 +322,5 @@ void reinitialize() {
   //gyro reset
   z_init = mpu.getAngleZ();
 }
+
 
