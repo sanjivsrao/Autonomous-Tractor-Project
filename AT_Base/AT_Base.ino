@@ -1,9 +1,14 @@
+// LIBRARIES
+
 #include <SoftwareSerial.h>
 #include <MPU6050_light.h>
 #include "Wire.h"
 
+/*========================================================================================*/
 
-//communication pins
+// MACROS
+
+//bluetooth module communication pins
 #define rxPin 8
 #define txPin 9
 
@@ -20,95 +25,122 @@
 #define enA 11
 #define in1 7
 #define in2 6
+
 //right motor pins
 #define enB 10
 #define in3 5
 #define in4 4
 
+//default speeds for PWM to left and right wheel (derived through testing)
 #define SpeedL 100-9
 #define SpeedR 97-10
 
-// Set up a new SoftwareSerial object for bluetooth
-SoftwareSerial mySerial(8,9);
+/*========================================================================================*/
 
+// OBJECT CONSTRUCTORS
 
+// Creates an instance of a SoftwareSerial object
+SoftwareSerial mySerial(rxPin,txPin);
+
+// Constructor for gyroscope
 MPU6050 mpu(Wire);
 
-unsigned long timer = 0;
+/*========================================================================================*/
+
+// TRACTOR FSM
 
 // states the tractor could be in
 enum {OFF, MOVE, TURN_L, TURN_R, TURN180};
 unsigned char currentState;  // tractor state at any given moment
 
+/*========================================================================================*/
+
+// BUTTON FSM and VARIABLES
+
 // states the button can be in
 enum {PUSHED, RELEASED};
 
 unsigned char buttonState; // button state at any given moment
-bool buttonCommand; // boolean conversion from button input
+bool buttonCommand = false; // boolean conversion from button input
 int buttonRead; // command boolean used for directing tractor FSM logic
-int usRead;
-int irRead;
-int numTapes = 0;
 unsigned long debounceDelay = 50;
 unsigned long debounceTime = 0;
+unsigned long timer = 0;
 
+/*========================================================================================*/
+
+// PERIPHERALS
+
+int usRead; // integer to store ultrasonic sensor digital read
+int irRead; // integer to store IR sensor analog read
+int numTapes = 0; // number of black tapes encountered
+
+/*========================================================================================*/
+
+// OTHER INFORMATION
+
+// Elapsed time in seconds
 float elapsedTime = millis()/1000;
 
-// bluetooth char
+// String to store received command from Bluetooth
 String cmd;
-// gyroscope float
+
+// Variables to store relevant gyroscopic information (degree rotation about Z)
 float z;
 float z_init;
 
+/*========================================================================================*/
+
+// Initial Setup
+
 void setup() {
   // Begins serial communication
-
   Serial.begin(9600);
+  
   // Defines button pin as input
   pinMode(buttonPin, INPUT);
 
-  // Define ultrasonic sensor pin as input
+  // Defines ultrasonic sensor pin as input
   pinMode(usPin, INPUT);
   pinMode(irPin, INPUT);
+  
+  // Defines RX pin of bluetooth module as input (send data)
   pinMode(rxPin,INPUT);
+
+  // Defines TX pin of bluetooth module as output (receive data)
   pinMode(txPin,OUTPUT);
-  //left motor
+  
+  // Defines speed and direction pins for left motor
   pinMode(enA, OUTPUT);
   pinMode(in1, OUTPUT);
   pinMode(in2, OUTPUT);
 
-  //right motor
+  // Defines speed and direction pins for right motor
   pinMode(enB, OUTPUT);
   pinMode(in3, OUTPUT);
   pinMode(in4, OUTPUT);
 
-  //init direction for left motor
+  // Initial direction for left motor
   digitalWrite(in1, LOW);
   digitalWrite(in2, HIGH);
-  //init direction for right motor
+  
+  // Initial direction for right motor
   digitalWrite(in3, LOW);
   digitalWrite(in4, HIGH);
 
-  //Serial setup
+  // Establishes serial communication between bluetooth module and arduino
   mySerial.begin(9600);
   
-  //gyro setup
+  // Calls gyroSetup() helper function to initialize gyroscope
   gyroSetup();
 
-  //init state
+  // Initial states of FSM's
   currentState = OFF;
   buttonState = RELEASED;
-  buttonCommand = false;
 
 }
 
 void loop() {
-   /*if(millis() - timer > 2000){ // print data every 2 seconds to bluetooth module
-    mySerial.print("\tZ: ");mySerial.println(mpu.getGyroZ());
-    mySerial.print("\tZ: ");mySerial.println(mpu.getAngleZ());
-    mySerial.println(F("===================="));
-    timer = millis();
-  }*/
   elapsedTime = millis()/1000;
   updateZ();
   //mySerial.print(static_cast<int>(mpu.getAccY()));
@@ -182,11 +214,6 @@ void loop() {
 
     case MOVE:
       updateZ();
-      // if ((millis()-timer)>3000){
-      //   currentState = OFF;
-      //   mpu.update();
-      //   break;
-      // }
       Serial.println("On");
       if (cmd == "off" || buttonCommand) {
         buttonCommand = false;
@@ -322,5 +349,3 @@ void reinitialize() {
   //gyro reset
   z_init = mpu.getAngleZ();
 }
-
-

@@ -1,180 +1,131 @@
-import pygame, sys
+import threading
 import asyncio
-
+import pygame
+import time
 from bleak import BleakClient
-from button import Button
+
+async def connectBLE():
+    await client.connect()
+
+ADDRESS = "94:A9:A8:3B:14:2F"
+CHARACTERISTIC_UUID = "0000FFE1-0000-1000-8000-00805F9B34FB"
+client = BleakClient(ADDRESS)
+asyncio.run(connectBLE())
 
 pygame.init()
-avgSpeed = 0
-totalSpeed = 0
-blacklines = 0
-speedI = 0
+width, height = 800, 600
+screen = pygame.display.set_mode((width, height))
+
+pygame.display.set_caption("Bluetooth Control")
+
+# Define button dimensions and positions
+button_width = 100
+button_height = 40
+start_button_x = 250
+start_button_y = 290
+stop_button_x = 450
+stop_button_y = 290
+
+trip_button_x = 350
+trip_button_y = 200
+
+# Define button texts
+start_text = "Start"
+stop_text = "Stop"
 
 
-SCREEN = pygame.display.set_mode((1280, 720))
-pygame.display.set_caption("Autonomous Tractor Controller")
+def draw_button(x, y, text):
+    font = pygame.font.SysFont(None, 24)
+    text_surface = font.render(text, True, (246, 186, 111))
+    text_rect = text_surface.get_rect()
+    text_rect.center = (x, y)
+    pygame.draw.rect(screen, (109, 169, 228), (x - button_width//2, y - button_height//2, button_width, button_height))
+    screen.blit(text_surface, text_rect)
 
-address = "94:a9:a8:3b:14:2f"
-c_UUID = "0000FFE1-0000-1000-8000-00805F9B34FB"
-s_UIUD = "0000FFE0-0000-1000-8000-00805F9B34FB"
-BG = pygame.image.load("assets/Background.png")
+def draw_time(t):
+    font = pygame.font.SysFont(None, 24)
+    text = font.render(f"Elapsed Time: {round(t,3)} seconds", True, (246, 186, 111))
+    screen.blit(text, (10, height * .8))
+    pygame.display.update()
+def draw_report():
+    font = pygame.font.SysFont(None, 24)
+    trip_surface = font.render(f"Trip Report:", True, (246, 186, 111))
+    trip_rect = trip_surface.get_rect()
+    trip_rect.topleft = (0, height * .75)
+    pygame.draw.rect(screen, (109, 169, 228), (0, height * .75, width//2, height))
+    screen.blit(trip_surface, trip_rect) 
+# def start_ble():
+#     loop = asyncio.new_event_loop()
+#     asyncio.set_event_loop(loop)
+#     loop.run_until_complete(send_on_command())
+#     loop.stop()
+
+# def stop_ble():
+#     loop = asyncio.new_event_loop()
+#     asyncio.set_event_loop(loop)
+#     loop.run_until_complete(send_off_command())
+#     loop.stop()
+async def disconnectBLE():
+    await client.disconnect()
+
+async def send_on_command():
+    await client.write_gatt_char(CHARACTERISTIC_UUID, bytearray('on', 'unicode_escape'))
+
+async def send_off_command():
+    await client.write_gatt_char(CHARACTERISTIC_UUID, bytearray('off', 'unicode_escape'))
+        # await asyncio.sleep(1)
+        # await client.stop_notify(CHARACTERISTIC_UUID)
+def callback(handle, data):
+    print(data)
+    str = ""
+    listData = list(data)
+    for x in range(len(listData)):
+        str += chr(listData[x])
+    print(str.split())
+    font = pygame.font.SysFont(None, 24)
+    text = font.render(f"Black Tapes Seen: {str.split()[0][0]}", True, (246, 186, 111))
+    screen.blit(text, (10, height * .95))
+    pygame.display.update()
+
+async def get_data():
+    await client.start_notify(CHARACTERISTIC_UUID, callback)
+    await asyncio.sleep(5)
+    await client.stop_notify(CHARACTERISTIC_UUID)     
 
 
-def notification_handler(sender, data):
-    """Simple notification handler which prints the data received."""
-    data1 = list(data)
-    data2 = ((data1[1]+data1[2]*256)*0.005)
-    print("{0}: {1}".format(sender, data2))
-    
-def get_font(size): # Returns Press-Start-2P in the desired size
-    return pygame.font.Font("assets/font.ttf", size)
 
-def start():
-    startBot(address)
-    speed = 0
-    while True:
-        
-        PLAY_MOUSE_POS = pygame.mouse.get_pos()
 
-        SCREEN.fill("black")
-        data_text= get_font(25).render("Real-Time Data", True, "Orange")
-        data_rect = data_text.get_rect(center=(300, 100))
-        SCREEN.blit(data_text, data_rect)
-        #gets values 
-        batteryhealth = updateBattery(address)
-        accel = updateAccel(address)
-        speed = speed + .001 * accel
-        totalSpeed = totalSpeed + speed
-        speedI = speedI + 1
-        blackLines = updateBlackLines(address)
-        direction = updateDirection(address)
-        #displays data
-        battery_text= get_font(25).render("Battery Health: " + str(batteryhealth) + "%", True, "White")
-        battery_rect = data_text.get_rect(center=(300, 150))
-        SCREEN.blit(battery_text, battery_rect)
-        speed_text = get_font(25).render("Speed: " + str(speed) + "cm/s", True, "White")
-        speed_rect = data_text.get_rect(center=(300, 200))
-        SCREEN.blit(speed_text, speed_rect)
-        blackLines_text = get_font(25).render("Black Lines: " + str(blackLines), True, "White")
-        blackLines_rect = data_text.get_rect(center=(300, 250))
-        SCREEN.blit(blackLines_text, blackLines_rect)
-        direction_text = get_font(25).render("Direction: " + str(direction), True, "White")
-        direction_rect = data_text.get_rect(center=(300, 300))
-        SCREEN.blit(direction_text, direction_rect)
+running = True
+ble_thread = None
+screen.fill((255, 235, 235))
+draw_button(start_button_x, start_button_y, start_text)
+draw_button(stop_button_x, stop_button_y, stop_text)
+draw_button(trip_button_x, trip_button_y, "Generate Trip Report")
+draw_report()
 
-        STOP = Button(image=None, pos=(840, 460), 
-                            text_input="STOP", font=get_font(75), base_color="White", hovering_color="Green")
-        STOP.changeColor(PLAY_MOUSE_POS)
-        STOP.update(SCREEN)
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                if pygame.mouse.get_pos()[0] > start_button_x - button_width//2 and pygame.mouse.get_pos()[0] < start_button_x + button_width//2 and pygame.mouse.get_pos()[1] > start_button_y - button_height//2 and pygame.mouse.get_pos()[1] < start_button_y + button_height//2:
+                    # Start new thread to run BleakClient event loop
+                    start = time.time()
+                    asyncio.run(send_on_command())
+                elif pygame.mouse.get_pos()[0] > stop_button_x - button_width//2 and pygame.mouse.get_pos()[0] < stop_button_x + button_width//2 and pygame.mouse.get_pos()[1] > stop_button_y - button_height//2 and pygame.mouse.get_pos()[1] < stop_button_y + button_height//2:
+                    # Stop BleakClient event loop
+                    asyncio.run(send_off_command())
+                    asyncio.run(get_data())
+                    end = time.time()
+                    elapsedTime = end - start
+                    draw_time(elapsedTime)
+                elif pygame.mouse.get_pos()[0] > trip_button_x - button_width//2 and pygame.mouse.get_pos()[0] < trip_button_x + button_width//2 and pygame.mouse.get_pos()[1] > trip_button_y - button_height//2 and pygame.mouse.get_pos()[1] < trip_button_y + button_height//2:
+                    print("d")
+    pygame.display.flip()
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if STOP.checkForInput(PLAY_MOUSE_POS):
-                    trip()
-        pygame.display.update()
-    
-def trip():
-    while True:
-        OPTIONS_MOUSE_POS = pygame.mouse.get_pos()
-
-        SCREEN.fill("black")
-
-        OPTIONS_TEXT = get_font(45).render("Trip Info:", True,"White")
-        OPTIONS_RECT = OPTIONS_TEXT.get_rect(center=(640, 50))
-        SCREEN.blit(OPTIONS_TEXT, OPTIONS_RECT)
-
-        #display overall data
-        avgSpeed = totalSpeed / speedI
-        avgSpeed_text = get_font(25).render("Average Speed: " + str(avgSpeed) + "cm/s", True, "White")
-        avgSpeed_rect = avgSpeed_text.get_rect(center=(640, 150))
-        SCREEN.blit(avgSpeed_text, avgSpeed_rect)
-        totalBlackLines_text = get_font(25).render("Total Black Lines: " + str(blacklines), True, "White")
-        totalBlackLines_rect = totalBlackLines_text.get_rect(center=(640, 200))
-        SCREEN.blit(totalBlackLines_text, totalBlackLines_rect)
-
-        OPTIONS_BACK = Button(image=None, pos=(640, 460), 
-                            text_input="BACK", font=get_font(75), base_color="Black", hovering_color="Green")
-
-        OPTIONS_BACK.changeColor(OPTIONS_MOUSE_POS)
-        OPTIONS_BACK.update(SCREEN)
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if OPTIONS_BACK.checkForInput(OPTIONS_MOUSE_POS):
-                    menu()
-
-        pygame.display.update()
-
-def menu():
-    while True:
-        SCREEN.blit(BG, (0, 0))
-
-        MENU_MOUSE_POS = pygame.mouse.get_pos()
-
-        MENU_TEXT = get_font(100).render("AT Controller", True, "#b68f40")
-        MENU_RECT = MENU_TEXT.get_rect(center=(640, 100))
-
-        
-        START_BUTTON = Button(image=pygame.image.load("assets/Play Rect.png"), pos=(640, 250), 
-                            text_input="Start", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
-        TRIP_BUTTON = Button(image=pygame.image.load("assets/Options Rect.png"), pos=(640, 400), 
-                            text_input="Recent Trip Report", font=get_font(50), base_color="#d7fcd4", hovering_color="White")
-        QUIT_BUTTON = Button(image=pygame.image.load("assets/Quit Rect.png"), pos=(640, 550), 
-                             text_input="QUIT", font=get_font(75), base_color="#d7fcd4", hovering_color="White")
-
-        SCREEN.blit(MENU_TEXT, MENU_RECT)
-
-        for button in [START_BUTTON, TRIP_BUTTON, QUIT_BUTTON]:
-            button.changeColor(MENU_MOUSE_POS)
-            button.update(SCREEN)
-        
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if START_BUTTON.checkForInput(MENU_MOUSE_POS):
-                    start()
-                if TRIP_BUTTON.checkForInput(MENU_MOUSE_POS):
-                    trip()
-                if QUIT_BUTTON.checkForInput(MENU_MOUSE_POS):
-                    pygame.quit()
-                    sys.exit()
-
-        pygame.display.update()
-async def startBot(address):
-    # async with BleakClient(address) as client:
-    #         await client.write_gatt_char(c_UUID, bytearray('on\r', 'utf8'))
-    #         print("robot shouldve started")
-    print("starting!!!!")
-async def updateBattery(address):
-    async with BleakClient(address) as client:
-        await client.start_notify(s_UIUD, notification_handler)
-        await asyncio.sleep(1.0)
-        await client.stop_notify(s_UIUD)
-        return 50
-def updateAccel(address):
-#     async with BleakClient(address) as client:
-#         await client.start_notify(s_UIUD, notification_handler)
-#         await asyncio.sleep(1.0)
-#         await client.stop_notify(s_UIUD)
-    return 509
-async def updateBlackLines(address):
-    async with BleakClient(address) as client:
-        await client.start_notify(s_UIUD, notification_handler)
-        await asyncio.sleep(1.0)
-        await client.stop_notify(s_UIUD)
-        return 50
-async def updateDirection(address):
-    async with BleakClient(address) as client:
-        await client.start_notify(s_UIUD, notification_handler)
-        await asyncio.sleep(1.0)
-        await client.stop_notify(s_UIUD)
-        return 50
-menu()
+    # Check if BleakClient event loop has stopped and join the thread
+    if ble_thread and not ble_thread.is_alive():
+        ble_thread.join()
+        ble_thread = None
+pygame.quit()
