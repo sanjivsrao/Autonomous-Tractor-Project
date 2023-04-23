@@ -1,5 +1,12 @@
 #include <SoftwareSerial.h>
-SoftwareSerial mySerial(8,9);
+
+//bluetooth module communication pins
+#define rxPin 8
+#define txPin 9
+
+// Set up a new SoftwareSerial object for bluetooth
+SoftwareSerial mySerial(rxPin,txPin);
+
 void setup()
 {
 mySerial.begin(9600);   
