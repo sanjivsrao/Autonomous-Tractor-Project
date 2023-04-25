@@ -63,8 +63,6 @@ enum {PUSHED, RELEASED};
 unsigned char buttonState; // button state at any given moment
 bool buttonCommand = false; // boolean conversion from button input
 int buttonRead; // command boolean used for directing tractor FSM logic
-unsigned long debounceDelay = 50;
-unsigned long debounceTime = 0;
 unsigned long timer = 0;
 
 /*========================================================================================*/
@@ -153,7 +151,6 @@ void loop() {
       buttonRead = digitalRead(buttonPin);
       if (!buttonRead){
         buttonState=RELEASED;
-        debounceTime = millis();
       }   
       break;
     case RELEASED:
@@ -231,7 +228,7 @@ void loop() {
        * of tapes, the robot will turn right or left.
       */
       irRead = analogRead(irPin);
-      // Detects
+      // Detects the reflectivity of surface
       if ((irRead < 700)){
         numTapes++;
         if (numTapes<=2){
