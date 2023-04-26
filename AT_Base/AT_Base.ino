@@ -227,31 +227,31 @@ void loop() {
        * to the appropriate state for the course provided. Based on the number
        * of tapes, the robot will turn right or left.
       */
-      irRead = analogRead(irPin);
-      // Detects the reflectivity of surface
-      if ((irRead < 700)){
-        numTapes++;
-        if (numTapes<=2){
-          //turn left
-          currentState = TURN_L;
-          mySerial.println("LEFT");
-          break;
-        }
-        else if (numTapes>=3 && numTapes<=4){
-          //turn right
-          currentState = TURN_R;
-          mySerial.println("RIGHT");
-          break;
-        }
-        else{
-          //turn left 
-          currentState = TURN_L;     
-          mySerial.println("LEFT"); 
-          break;   
-        }
-        mpu.update();
-        break;
-      }
+//      irRead = analogRead(irPin);
+//      // Detects the reflectivity of surface
+//      if ((irRead < 700)){
+//        numTapes++;
+//        if (numTapes<=2){
+//          //turn left
+//          currentState = TURN_L;
+//          mySerial.println("LEFT");
+//          break;
+//        }
+//        else if (numTapes>=3 && numTapes<=4){
+//          //turn right
+//          currentState = TURN_R;
+//          mySerial.println("RIGHT");
+//          break;
+//        }
+//        else{
+//          //turn left 
+//          currentState = TURN_L;     
+//          mySerial.println("LEFT"); 
+//          break;   
+//        }
+//        mpu.update();
+//        break;
+//      }
 
 
       /* Object detection:
@@ -402,7 +402,6 @@ void read_command() {
   if (mySerial.available()) {
     cmd = mySerial.readString();
     Serial.print("Command: ");
-
     
     if (cmd == "off") {
       Serial.println("Turning off Robot");
